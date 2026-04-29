@@ -1,0 +1,546 @@
+{
+  "info": {
+    "_postman_id": "b3b6f450-849b-4ab6-aeea-8e86139b3db5",
+    "name": "Banking Transactions API — homework-1",
+    "description": "End-to-end collection for the Banking Transactions API. Run against npm run dev (http://localhost:3000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "{{baseUrl}}", "type": "string" },
+    { "key": "createdTxnId", "value": "", "type": "string" },
+    { "key": "testAccount", "value": "ACC-TESTA", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "System",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status field is ok', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('ok');",
+                  "});",
+                  "pm.test('uptime is a number', () => {",
+                  "  pm.expect(pm.response.json().uptime).to.be.a('number');",
+                  "});",
+                  "pm.test('version is present', () => {",
+                  "  pm.expect(pm.response.json().version).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Create deposit (happy path)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccount\": \"EXTERNAL\",\n  \"toAccount\": \"ACC-TESTA\",\n  \"amount\": 1000,\n  \"currency\": \"USD\",\n  \"type\": \"deposit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('transaction is completed', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.status).to.eql('completed');",
+                  "  pm.expect(body.failureReason).to.be.null;",
+                  "});",
+                  "pm.test('id has txn_ prefix', () => {",
+                  "  pm.expect(pm.response.json().id).to.match(/^txn_/);",
+                  "});",
+                  "pm.test('timestamp is present', () => {",
+                  "  pm.expect(pm.response.json().timestamp).to.be.a('string');",
+                  "});",
+                  "pm.test('x-request-id header present', () => {",
+                  "  pm.expect(pm.response.headers.get('x-request-id')).to.be.a('string');",
+                  "});",
+                  "// Store ID for later requests",
+                  "pm.collectionVariables.set('createdTxnId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create failed withdrawal (insufficient funds)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccount\": \"ACC-EMPTY\",\n  \"toAccount\": \"EXTERNAL\",\n  \"amount\": 9999,\n  \"currency\": \"USD\",\n  \"type\": \"withdrawal\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201 (request accepted)', () => pm.response.to.have.status(201));",
+                  "pm.test('transaction status is failed', () => {",
+                  "  pm.expect(pm.response.json().status).to.eql('failed');",
+                  "});",
+                  "pm.test('failureReason is INSUFFICIENT_FUNDS', () => {",
+                  "  pm.expect(pm.response.json().failureReason).to.eql('INSUFFICIENT_FUNDS');",
+                  "});",
+                  "pm.test('status is never pending', () => {",
+                  "  pm.expect(pm.response.json().status).to.not.eql('pending');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation error — invalid currency",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccount\": \"EXTERNAL\",\n  \"toAccount\": \"ACC-TESTA\",\n  \"amount\": 100,\n  \"currency\": \"XYZ\",\n  \"type\": \"deposit\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code is VALIDATION_ERROR', () => {",
+                  "  pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR');",
+                  "});",
+                  "pm.test('details array is present', () => {",
+                  "  pm.expect(pm.response.json().details).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "pm.test('details items have field and message', () => {",
+                  "  pm.response.json().details.forEach(d => {",
+                  "    pm.expect(d).to.have.property('field');",
+                  "    pm.expect(d).to.have.property('message');",
+                  "  });",
+                  "});",
+                  "pm.test('requestId present', () => {",
+                  "  pm.expect(pm.response.json().requestId).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation error — transfer same account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccount\": \"ACC-TESTA\",\n  \"toAccount\": \"ACC-TESTA\",\n  \"amount\": 100,\n  \"currency\": \"USD\",\n  \"type\": \"transfer\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('details mention differ', () => {",
+                  "  const details = pm.response.json().details;",
+                  "  pm.expect(details.some(d => d.message.includes('differ'))).to.be.true;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Validation error — extra field rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromAccount\": \"EXTERNAL\",\n  \"toAccount\": \"ACC-TESTA\",\n  \"amount\": 100,\n  \"currency\": \"USD\",\n  \"type\": \"deposit\",\n  \"id\": \"txn_sneaky\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400 (strict schema)', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List all transactions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/transactions", "host": ["{{baseUrl}}"], "path": ["api", "transactions"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('response has data array', () => {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});",
+                  "pm.test('response has count', () => {",
+                  "  pm.expect(pm.response.json().count).to.be.a('number');",
+                  "});",
+                  "pm.test('count matches data length', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.count).to.eql(body.data.length);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List filtered by accountId",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions?accountId=ACC-TESTA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions"],
+              "query": [{ "key": "accountId", "value": "ACC-TESTA" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('all rows involve ACC-TESTA', () => {",
+                  "  pm.response.json().data.forEach(t => {",
+                  "    pm.expect(t.fromAccount === 'ACC-TESTA' || t.toAccount === 'ACC-TESTA').to.be.true;",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List invalid filter → 400",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions?accountId=bad-format",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions"],
+              "query": [{ "key": "accountId", "value": "bad-format" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{createdTxnId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "{{createdTxnId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('id matches', () => {",
+                  "  pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('createdTxnId'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transaction by ID → 404",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/txn_nonexistent00000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "txn_nonexistent00000000000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));",
+                  "pm.test('requestId present', () => pm.expect(pm.response.json().requestId).to.be.a('string'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Export CSV",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/csv" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/export?accountId=ACC-TESTA",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "export"],
+              "query": [{ "key": "accountId", "value": "ACC-TESTA" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('content-type is text/csv', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Type')).to.include('text/csv');",
+                  "});",
+                  "pm.test('content-disposition is attachment', () => {",
+                  "  pm.expect(pm.response.headers.get('Content-Disposition')).to.include('attachment');",
+                  "});",
+                  "pm.test('CSV has header row', () => {",
+                  "  const firstLine = pm.response.text().split('\\r\\n')[0];",
+                  "  pm.expect(firstLine).to.eql('id,fromAccount,toAccount,amount,currency,type,timestamp,status,failureReason');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "Get balance (empty account)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/ACC-EMPTY/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "ACC-EMPTY", "balance"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 for unknown account', () => pm.response.to.have.status(200));",
+                  "pm.test('balances is empty array', () => {",
+                  "  pm.expect(pm.response.json().balances).to.eql([]);",
+                  "});",
+                  "pm.test('asOf is present', () => {",
+                  "  pm.expect(pm.response.json().asOf).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get balance (funded account)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/ACC-TESTA/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "ACC-TESTA", "balance"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('balances array present', () => {",
+                  "  pm.expect(pm.response.json().balances).to.be.an('array');",
+                  "});",
+                  "pm.test('USD balance is 1000', () => {",
+                  "  const usd = pm.response.json().balances.find(b => b.currency === 'USD');",
+                  "  pm.expect(usd).to.exist;",
+                  "  pm.expect(usd.amount).to.eql(1000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get balance — invalid accountId → 400",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/bad-format/balance",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "bad-format", "balance"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get summary (funded account)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/ACC-TESTA/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "ACC-TESTA", "summary"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('perCurrency is array', () => {",
+                  "  pm.expect(pm.response.json().perCurrency).to.be.an('array');",
+                  "});",
+                  "pm.test('USD entry has correct deposits', () => {",
+                  "  const usd = pm.response.json().perCurrency.find(e => e.currency === 'USD');",
+                  "  pm.expect(usd).to.exist;",
+                  "  pm.expect(usd.totalDeposits).to.eql(1000);",
+                  "  pm.expect(usd.transactionCount).to.be.at.least(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get summary — invalid accountId → 400",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/bad/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "bad", "summary"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

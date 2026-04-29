@@ -11,3 +11,29 @@
 
 **What I changed and why:**
 The scaffold prompt pointed Claude Code at the design spec as the authoritative source. Rather than waiting until later phases to stub the domain layer, I generated the full folder structure plus minimal-but-real implementations of all validators, models, repository, services, controllers, and routes in Phase 0 so the TypeScript compiler can verify the wiring from day one. The only stubs are the frontend components (populated in Phase 5) and the scripts (populated in Phase 3). The health route was implemented fully as the Phase 0 exit criterion. I chose to not gitignore the built CSS and JS bundles so the `/here-now` deploy can serve them as committed static assets without requiring a build step in the deploy pipeline.
+
+---
+
+## Phase 1+2: Backend domain & validation + HTTP layer
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Prompt:** (authored in-flight per spec §7.6 — no verbatim prompt prescribed)
+
+**Outcome:** Accepted — 143 tests written and passing; coverage 95.6% overall, 96.7% services, 100% validators.
+
+**What I changed and why:**
+The spec's coverage gate (≥80% overall, ≥85% services/validators) requires both unit and integration test layers since `npm test` runs them together. I wrote all four integration test files alongside the unit tests rather than waiting for Phase 2. Key decisions: the `validate` middleware uses Zod error `path.join('.')` to produce readable field names; the `errorHandler` omits the `details` key entirely (not just `[]`) for non-validation errors to keep the response minimal; the `TransactionRepository.list` applies the failed-transaction visibility filter as a single predicate function rather than scattering it. The `getBalance` method lives on `TransactionsService` rather than delegating to `AccountsService` to avoid a circular dependency between the two services.
+
+---
+
+## Phase 3: OpenAPI + Postman wiring
+
+**Tool:** Claude Code + Postman MCP (via `@asteasolutions/zod-to-openapi`)
+
+**Prompt:** (authored in-flight)
+
+**Outcome:** Accepted — `docs/openapi.yaml` generated from Zod schemas; Postman workspace `Banking Transactions API — homework-1` created; collection generated from spec; 17 requests / 51 assertions all green via Newman.
+
+**What I changed and why:**
+Used `@asteasolutions/zod-to-openapi` with `extendZodWithOpenApi` to annotate the existing Zod schemas and drive the OpenAPI 3.1 document. The generator produces verbose inline schemas (no `$ref` in the generated YAML) due to how zod-to-openapi resolves unions — acceptable for the homework. The Postman MCP `putCollection` endpoint requires item IDs which are cumbersome to manage for a scripted update, so the scripted collection is maintained locally in `demo/postman-collection.json` and the Postman workspace holds the auto-generated version. Newman runs the local file; the workspace provides the visual spec for the reviewer.
