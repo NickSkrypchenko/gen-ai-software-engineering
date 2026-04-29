@@ -37,3 +37,27 @@ The spec's coverage gate (≥80% overall, ≥85% services/validators) requires b
 
 **What I changed and why:**
 Used `@asteasolutions/zod-to-openapi` with `extendZodWithOpenApi` to annotate the existing Zod schemas and drive the OpenAPI 3.1 document. The generator produces verbose inline schemas (no `$ref` in the generated YAML) due to how zod-to-openapi resolves unions — acceptable for the homework. The Postman MCP `putCollection` endpoint requires item IDs which are cumbersome to manage for a scripted update, so the scripted collection is maintained locally in `demo/postman-collection.json` and the Postman workspace holds the auto-generated version. Newman runs the local file; the workspace provides the visual spec for the reviewer.
+
+---
+
+## Phase 4: Wireframes + Visual Brief + Review Brief
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Prompt:** (authored in-flight)
+
+**Outcome:** Accepted — three spec docs written: `docs/specs/wireframes.md` (ASCII layout + interaction notes for both pages), `docs/specs/visual-brief.md` (full design system: brand direction, color palette, component specs, motion specs), `docs/specs/review-brief.md` (five focus areas with file:line references for the `/codex:review` phase).
+
+---
+
+## Phase 5: Frontend UI — `/high-end-visual-design`
+
+**Tool:** Claude Code (claude-sonnet-4-6) via `/high-end-visual-design` skill
+
+**Prompt:**
+> Skill invoked with: `docs/specs/visual-brief.md docs/specs/wireframes.md`
+
+**Outcome:** Accepted — fully styled landing/docs page (`public/index.html`), operator dashboard (`public/dashboard.html`), built CSS bundle (`public/css/tailwind.css`, 23 KB), and two esbuild JS bundles (`docs.bundle.js` 7 KB, `dashboard.bundle.js` 21 KB). All 143 backend tests still passing.
+
+**What I changed and why:**
+Chose "Soft Structuralism" vibe + asymmetric double-bezel cards to match the Mercury/Stripe Press brief direction. Key decisions: floating pill nav (not edge-to-edge sticky) per the skill's spec; `Plus Jakarta Sans` for typography (Inter was banned by the skill); `JetBrains Mono` for code blocks and IDs; inline `<style>` for custom CSS (dot-grid background, scroll-reveal keyframes, method pills) while relying on Tailwind JIT for everything else. The `api-client.ts` unwraps the `{ data, count }` envelope the `GET /api/transactions` controller produces — a shape mismatch that would have caused silent failures with a naive array assumption. The `/dashboard` route was added to `app.ts` since Express `static()` only serves `dashboard.html` at `/dashboard.html`, not `/dashboard`. The `tailwind.config.ts` safelist was extended with dynamically applied classes (toast transitions, health-pill colour swaps) to prevent JIT from purging them.
