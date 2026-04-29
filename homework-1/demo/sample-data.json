@@ -1,0 +1,112 @@
+[
+  {
+    "id": "txn_01HWSEEDDEPOSITUSDAAAAAA01",
+    "fromAccount": "EXTERNAL",
+    "toAccount": "ACC-AAAAA",
+    "amount": 5000.00,
+    "currency": "USD",
+    "type": "deposit",
+    "timestamp": "2026-04-29T08:00:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDDEPOSITUSDAAAAAA02",
+    "fromAccount": "EXTERNAL",
+    "toAccount": "ACC-BBBBB",
+    "amount": 3000.00,
+    "currency": "USD",
+    "type": "deposit",
+    "timestamp": "2026-04-29T08:05:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDDEPOSITEURAAAAAA03",
+    "fromAccount": "EXTERNAL",
+    "toAccount": "ACC-AAAAA",
+    "amount": 2000.00,
+    "currency": "EUR",
+    "type": "deposit",
+    "timestamp": "2026-04-29T08:10:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDTRANSFERUSDAABB04",
+    "fromAccount": "ACC-AAAAA",
+    "toAccount": "ACC-BBBBB",
+    "amount": 500.00,
+    "currency": "USD",
+    "type": "transfer",
+    "timestamp": "2026-04-29T09:00:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDWITHDRAWUSDAAAAA05",
+    "fromAccount": "ACC-BBBBB",
+    "toAccount": "EXTERNAL",
+    "amount": 200.00,
+    "currency": "USD",
+    "type": "withdrawal",
+    "timestamp": "2026-04-29T09:30:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDFAILEDTRANSFERCC06",
+    "fromAccount": "ACC-CCCCC",
+    "toAccount": "ACC-AAAAA",
+    "amount": 999.00,
+    "currency": "USD",
+    "type": "transfer",
+    "timestamp": "2026-04-29T10:00:00.000Z",
+    "status": "failed",
+    "failureReason": "INSUFFICIENT_FUNDS"
+  },
+  {
+    "id": "txn_01HWSEEDDEPOSITUSDCCCCC07",
+    "fromAccount": "EXTERNAL",
+    "toAccount": "ACC-CCCCC",
+    "amount": 100.00,
+    "currency": "USD",
+    "type": "deposit",
+    "timestamp": "2026-04-29T10:15:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDTRANSFERUSDAABB08",
+    "fromAccount": "ACC-AAAAA",
+    "toAccount": "ACC-CCCCC",
+    "amount": 250.50,
+    "currency": "USD",
+    "type": "transfer",
+    "timestamp": "2026-04-29T11:00:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDDEPOSITEURBBBBB09",
+    "fromAccount": "EXTERNAL",
+    "toAccount": "ACC-BBBBB",
+    "amount": 1500.00,
+    "currency": "EUR",
+    "type": "deposit",
+    "timestamp": "2026-04-29T11:30:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  },
+  {
+    "id": "txn_01HWSEEDWITHDRAWEURCCCCC10",
+    "fromAccount": "ACC-AAAAA",
+    "toAccount": "EXTERNAL",
+    "amount": 300.00,
+    "currency": "EUR",
+    "type": "withdrawal",
+    "timestamp": "2026-04-29T12:00:00.000Z",
+    "status": "completed",
+    "failureReason": null
+  }
+]
