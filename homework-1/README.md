@@ -70,7 +70,7 @@ routes → controllers → services → repository
 | Integration (HTTP via supertest) | 4 files | 41 tests |
 | **Total** | **11 files** | **145 tests** |
 
-**Coverage:** 95.85% statements · 92.68% branches · 97.77% functions  
+**Coverage:** 95.96% statements · 92.68% branches · 97.77% functions  
 *(thresholds: ≥80% overall, ≥85% services/validators — all exceeded)*
 
 ---
@@ -82,13 +82,39 @@ All implementation phases were driven by Claude Code (`claude-sonnet-4-6`). Full
 | Phase | Tool | Outcome |
 |---|---|---|
 | 0 — Scaffold | Claude Code | Full folder structure + wiring |
-| 1+2 — Backend + HTTP layer | Claude Code | 145 tests, 95.85% coverage |
+| 1+2 — Backend + HTTP layer | Claude Code | 145 tests, 95.96% coverage |
 | 3 — OpenAPI + Postman | Claude Code + Postman MCP | `docs/openapi.yaml` + Newman e2e |
 | 4 — Wireframes + design briefs | Claude Code | `docs/specs/wireframes.md`, `visual-brief.md` |
 | 5 — Frontend UI | `/high-end-visual-design` skill | Styled landing page + dashboard |
 | 7 — Code review | Inline review (skill unavailable) | `docs/reviews/codex-review-2026-04-29.md` |
 | 10 — Static deploy | `/here-now` skill | Static frontend live at `hallowed-sonnet-3dak.here.now` |
 | 11 — Vercel deploy | `vercel:deploy` skill + Playwright testing | Full-stack deploy at `homework-1-sepia.vercel.app` |
+| 12 — Test evidence | Claude Code + Playwright MCP | Screenshots in `docs/screenshots/` |
+
+---
+
+## Screenshots
+
+### Live deployment (Vercel)
+
+| Landing page | Endpoints — live Try-it | Dashboard (ACC-AAAAA) |
+|---|---|---|
+| ![Landing](docs/screenshots/app_demo.png) | ![Endpoints](docs/screenshots/app_demo_2.png) | ![Dashboard](docs/screenshots/app_demo_3.png) |
+
+### Test results
+
+| Unit + Integration (Vitest · 145/145) | E2E summary (Newman · 51/51) |
+|---|---|
+| ![Unit tests](docs/screenshots/unit_test_result.png) | ![E2E tests](docs/screenshots/e2e_tests_result.png) |
+
+Full coverage report: [`docs/screenshots/coverage-report.png`](docs/screenshots/coverage-report.png)  
+Full Newman run: [`docs/screenshots/newman-results.png`](docs/screenshots/newman-results.png)
+
+### AI workflow (Claude Code sessions)
+
+| Spec review | Implementation feedback | Kickoff prompt |
+|---|---|---|
+| ![Prompt 2](docs/screenshots/prompt_2.png) | ![Prompt 3](docs/screenshots/prompt_3.png) | ![Prompt 4](docs/screenshots/prompt_4.png) |
 
 ---
 
@@ -132,6 +158,7 @@ homework-1/
 │   ├── AI-USAGE.md               # Prompt log + decisions per phase
 │   ├── openapi.yaml              # OpenAPI 3.1 (generated from Zod schemas)
 │   ├── reviews/codex-review-2026-04-29.md
+│   ├── screenshots/              # Test evidence + app demos + AI workflow shots
 │   └── specs/                    # Design spec, wireframes, visual brief
 ├── scripts/
 │   └── generate-openapi.ts       # OpenAPI generation script

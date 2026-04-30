@@ -75,3 +75,39 @@ Chose "Soft Structuralism" vibe + asymmetric double-bezel cards to match the Mer
 
 **What I changed and why:**
 here.now is static-only (no Node.js server support). The Express API backend cannot run there — reviewers run it locally via `npm run seed`. The `public/` directory was assembled into a `.deploy/` staging tree that restructures `dashboard.html` as `dashboard/index.html` so the clean URL `/dashboard/` works on the static host (Express had a dedicated `GET /dashboard` route; the static host does not). The `/dashboard` nav links in the deployed `index.html` were patched to `/dashboard/` (trailing slash) to match the static directory URL. All asset paths (`/css/tailwind.css`, `/js/*.bundle.js`) are root-relative and work from any depth. The `.deploy/` directory is gitignored since it is a derivative of `public/`.
+
+---
+
+## Phase 11: Vercel production deploy — `vercel:deploy` skill
+
+**Tool:** Claude Code (claude-sonnet-4-6) via `vercel:deploy` skill + Playwright MCP
+
+**Prompt:**
+> "lets also deploy our project to vercel. edit all necessary and deploy"
+
+**Outcome:** Accepted — full-stack Express API deployed at **https://homework-1-sepia.vercel.app** as a Vercel serverless function with seed data loaded on cold start.
+
+**What I changed and why:**
+Vercel requires the app to be exported as a module (not call `app.listen()`). Created `api/index.js` as the serverless entry point that imports the compiled `dist/app.js`, creates the repository, bulk-loads seed data, and exports the Express app — no TCP port binding. Updated `vercel.json` with `"framework": null` (disables Vercel's Express auto-detection which was creating a ghost root function that crashed with `FUNCTION_INVOCATION_FAILED`), `"outputDirectory": "public"` (serves static files via CDN), and rewrites routing `/api/*` and `/health` to the serverless function.
+
+Root tsconfig needed `"lib": ["ES2022", "DOM", "DOM.Iterable"]` because Vercel's `@vercel/node` builder runs a full `tsc` pass on all project TypeScript files — including `public/js/docs.ts` and `dashboard.ts` which use DOM globals — independent of the `npm run build` step. Adding DOM types to the root tsconfig satisfies that pass without affecting server compilation.
+
+Post-deploy verification via Playwright MCP confirmed all routes (landing, dashboard, `/api/transactions`, `/health`) return correct responses from the live serverless function.
+
+---
+
+## Phase 12: Test evidence screenshots
+
+**Tool:** Claude Code (claude-sonnet-4-6) via Playwright MCP
+
+**Prompt:**
+> "run all available tests for project - i need to make screenshots of their results"
+
+**Outcome:** Accepted — both test suites run clean; screenshots captured to `docs/screenshots/`.
+
+- `npm test` → 145/145 passed, coverage 95.96% stmts · 92.68% branches · 97.77% functions
+- `npm run test:e2e` → 17 requests, 51/51 assertions, 0 failures, avg 4ms response
+- Istanbul HTML coverage report screenshotted via Playwright (served over local HTTP)
+- Newman output rendered as terminal-style HTML and screenshotted
+- App demo screenshots of the live Vercel deployment (landing, endpoints Try-it panel, dashboard)
+- AI workflow screenshots (`prompt_1-4.png`) added manually by the student showing Claude Code sessions
