@@ -61,3 +61,17 @@ Used `@asteasolutions/zod-to-openapi` with `extendZodWithOpenApi` to annotate th
 
 **What I changed and why:**
 Chose "Soft Structuralism" vibe + asymmetric double-bezel cards to match the Mercury/Stripe Press brief direction. Key decisions: floating pill nav (not edge-to-edge sticky) per the skill's spec; `Plus Jakarta Sans` for typography (Inter was banned by the skill); `JetBrains Mono` for code blocks and IDs; inline `<style>` for custom CSS (dot-grid background, scroll-reveal keyframes, method pills) while relying on Tailwind JIT for everything else. The `api-client.ts` unwraps the `{ data, count }` envelope the `GET /api/transactions` controller produces — a shape mismatch that would have caused silent failures with a naive array assumption. The `/dashboard` route was added to `app.ts` since Express `static()` only serves `dashboard.html` at `/dashboard.html`, not `/dashboard`. The `tailwind.config.ts` safelist was extended with dynamically applied classes (toast transitions, health-pill colour swaps) to prevent JIT from purging them.
+
+---
+
+## Phase 10: Deploy — `/here-now`
+
+**Tool:** Claude Code (claude-sonnet-4-6) via `/here-now` skill
+
+**Prompt:**
+> Skill invoked at Phase 10 approval gate.
+
+**Outcome:** Accepted — static frontend published to **https://hallowed-sonnet-3dak.here.now/** (authenticated, permanent). Dashboard at `/dashboard/`.
+
+**What I changed and why:**
+here.now is static-only (no Node.js server support). The Express API backend cannot run there — reviewers run it locally via `npm run seed`. The `public/` directory was assembled into a `.deploy/` staging tree that restructures `dashboard.html` as `dashboard/index.html` so the clean URL `/dashboard/` works on the static host (Express had a dedicated `GET /dashboard` route; the static host does not). The `/dashboard` nav links in the deployed `index.html` were patched to `/dashboard/` (trailing slash) to match the static directory URL. All asset paths (`/css/tailwind.css`, `/js/*.bundle.js`) are root-relative and work from any depth. The `.deploy/` directory is gitignored since it is a derivative of `public/`.
