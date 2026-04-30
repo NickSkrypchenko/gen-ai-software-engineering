@@ -57,27 +57,22 @@ describe('toCSV', () => {
   });
 
   it('RFC 4180: wraps field containing comma in double quotes', () => {
-    // We inject a comma via a hypothetical field — test the escapeField logic directly
-    // by creating a transaction with a status value that contains a comma (artificial)
-    // Since real field values don't contain commas, test with a field that does via type casting
-    // The escapeField function is what matters; test it through a crafted row
-    const weirdTxn: Transaction = {
+    const txn: Transaction = {
       ...baseTxn,
-      // amount converted to string will be "100.5" — no comma issue
-      // We test the quoting indirectly: create a txn and verify clean output
-      amount: 100.5,
+      id: 'txn_,weird' as unknown as string,
     };
-    const csv = toCSV([weirdTxn]);
-    expect(csv).not.toContain('""');
+    const csv = toCSV([txn]);
+    const dataRow = csv.split('\r\n')[1];
+    expect(dataRow.startsWith('"txn_,weird"')).toBe(true);
   });
 
-  it('RFC 4180: wraps field containing double quote, doubling the quote', () => {
-    // The escapeField function handles this; since real field values are constrained,
-    // we verify the function exists and the CSV is well-formed
-    const csv = toCSV([baseTxn]);
-    // Verify it doesn't throw and output is valid CSV
-    const lines = csv.split('\r\n');
-    expect(lines.length).toBeGreaterThan(0);
+  it('RFC 4180: doubles embedded double-quotes', () => {
+    const txn: Transaction = {
+      ...baseTxn,
+      id: 'txn_"quoted"' as unknown as string,
+    };
+    const csv = toCSV([txn]);
+    expect(csv).toContain('"txn_""quoted"""');
   });
 
   it('header column order matches spec', () => {

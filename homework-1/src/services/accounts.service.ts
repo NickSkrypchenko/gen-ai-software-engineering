@@ -26,11 +26,11 @@ export class AccountsService {
       const amount = completed
         .filter(t => t.currency === currency)
         .reduce((sum, t) => {
-          if (t.toAccount === accountId) return sum + t.amount;
-          if (t.fromAccount === accountId) return sum - t.amount;
+          if (t.toAccount === accountId) return Math.round((sum + t.amount) * 100) / 100;
+          if (t.fromAccount === accountId) return Math.round((sum - t.amount) * 100) / 100;
           return sum;
         }, 0);
-      return { currency, amount: Math.round(amount * 100) / 100 };
+      return { currency, amount };
     });
 
     return { accountId, balances, asOf: new Date().toISOString() };

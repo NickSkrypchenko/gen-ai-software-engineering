@@ -52,6 +52,20 @@ export const CreateTransactionSchema = z
         message: 'Withdrawal source must be an account, not EXTERNAL',
       });
     }
+    if (v.type === 'transfer' && v.fromAccount === 'EXTERNAL') {
+      ctx.addIssue({
+        path: ['fromAccount'],
+        code: 'custom',
+        message: 'Transfer source must be an account, not EXTERNAL',
+      });
+    }
+    if (v.type === 'transfer' && v.toAccount === 'EXTERNAL') {
+      ctx.addIssue({
+        path: ['toAccount'],
+        code: 'custom',
+        message: 'Transfer destination must be an account, not EXTERNAL',
+      });
+    }
   });
 
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;

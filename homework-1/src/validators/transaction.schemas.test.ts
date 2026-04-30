@@ -112,6 +112,28 @@ describe('CreateTransactionSchema — type-account cross-rules', () => {
       expect(result.error.issues.some(i => i.message.includes('differ'))).toBe(true);
     }
   });
+
+  it('rejects transfer where fromAccount is EXTERNAL', () => {
+    const result = CreateTransactionSchema.safeParse({
+      ...validTransfer,
+      fromAccount: 'EXTERNAL',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some(i => i.path.includes('fromAccount'))).toBe(true);
+    }
+  });
+
+  it('rejects transfer where toAccount is EXTERNAL', () => {
+    const result = CreateTransactionSchema.safeParse({
+      ...validTransfer,
+      toAccount: 'EXTERNAL',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some(i => i.path.includes('toAccount'))).toBe(true);
+    }
+  });
 });
 
 describe('CreateTransactionSchema — field validation', () => {
