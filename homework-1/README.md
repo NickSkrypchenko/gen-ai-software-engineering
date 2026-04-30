@@ -64,6 +64,8 @@ routes → controllers → services → repository
 
 ## Test coverage
 
+> Full guide: [TESTING.md](TESTING.md)
+
 | Layer | Files | Tests |
 |---|---|---|
 | Unit (services, validators, repo, utils) | 7 files | 104 tests |
@@ -165,5 +167,6 @@ homework-1/
 ├── Dockerfile
 ├── vercel.json                   # Vercel deployment config (framework: null, rewrites)
 ├── README.md
-└── HOWTORUN.md
+├── HOWTORUN.md
+└── TESTING.md                    # Testing guide (unit, integration, e2e, coverage)
 ```

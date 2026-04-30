@@ -60,6 +60,8 @@ Runs all 145 unit + integration tests with coverage. Coverage thresholds are enf
 - ≥ 80% overall statements/branches/functions  
 - Effective ≥ 85% on `src/services/` and `src/validators/`
 
+See [TESTING.md](TESTING.md) for the full testing guide (file map, coverage report, e2e isolation notes).
+
 ---
 
 ## 5. Run end-to-end tests (Newman / Postman)
