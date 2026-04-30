@@ -1,5 +1,16 @@
 # How to Run
 
+## Live deployments
+
+The app is already deployed — no setup required to try it:
+
+| Environment | URL |
+|---|---|
+| **Vercel (full-stack, live API)** | https://homework-1-sepia.vercel.app |
+| **here.now (static frontend only)** | https://hallowed-sonnet-3dak.here.now/ |
+
+---
+
 ## Prerequisites
 
 - Node.js ≥ 20
@@ -118,6 +129,25 @@ docker run -e SEED=1 -p 3000:3000 banking-api
 | `SEED` | `` | Set to `1` to load `demo/sample-data.json` on startup |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin |
 | `LOG_LEVEL` | `info` | Pino log level |
+
+---
+
+## 10. Deploy to Vercel
+
+Requires [Vercel CLI](https://vercel.com/docs/cli) and a Vercel account.
+
+```bash
+# First time — link the project
+npx vercel link
+
+# Deploy to production
+npx vercel --prod
+```
+
+The project is pre-configured via `vercel.json`:
+- Static frontend served from `public/` via CDN
+- API (`/api/*`) and `/health` routed to `api/index.js` as a serverless function
+- Seed data is loaded automatically on cold start
 
 ---
 

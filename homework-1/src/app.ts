@@ -28,10 +28,6 @@ export function createApp(repo?: TransactionRepository) {
 
   app.use(express.static(path.join(__dirname, '..', 'public')));
 
-  app.get('/dashboard', (_req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'public', 'dashboard.html'));
-  });
-
   app.use('/health', healthRouter);
   app.use('/api/transactions', createTransactionsRouter(txController));
   app.use('/api/accounts', createAccountsRouter(acctController));

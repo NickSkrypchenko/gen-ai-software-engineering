@@ -7,6 +7,17 @@
 
 ---
 
+## Live deployments
+
+| Environment | URL |
+|---|---|
+| **Vercel (production)** | https://homework-1-sepia.vercel.app |
+| **here.now (static mirror)** | https://hallowed-sonnet-3dak.here.now/ |
+
+The Vercel deployment runs the full Express API as serverless functions with seed data pre-loaded. The here.now deployment is a static frontend only (API calls will return offline).
+
+---
+
 ## What was built
 
 A production-flavoured REST API for banking transactions implemented in Node.js + Express + TypeScript, delivered entirely through AI-assisted development. The application handles deposits, withdrawals, and transfers between in-memory accounts, with synchronous settlement, a full audit trail, and a polished static frontend.
@@ -76,6 +87,8 @@ All implementation phases were driven by Claude Code (`claude-sonnet-4-6`). Full
 | 4 — Wireframes + design briefs | Claude Code | `docs/specs/wireframes.md`, `visual-brief.md` |
 | 5 — Frontend UI | `/high-end-visual-design` skill | Styled landing page + dashboard |
 | 7 — Code review | Inline review (skill unavailable) | `docs/reviews/codex-review-2026-04-29.md` |
+| 10 — Static deploy | `/here-now` skill | Static frontend live at `hallowed-sonnet-3dak.here.now` |
+| 11 — Vercel deploy | `vercel:deploy` skill + Playwright testing | Full-stack deploy at `homework-1-sepia.vercel.app` |
 
 ---
 
@@ -104,9 +117,11 @@ homework-1/
 │   ├── models/                   # Type aliases from z.infer
 │   ├── middleware/               # requestId, validate, errorHandler
 │   └── utils/                    # Money, clock, logger, http-errors
+├── api/
+│   └── index.js                  # Vercel serverless entry point (exports Express app)
 ├── public/
 │   ├── index.html                # Landing + API docs page
-│   ├── dashboard.html            # Operator dashboard
+│   ├── dashboard/index.html      # Operator dashboard (served at /dashboard/)
 │   ├── css/tailwind.css          # Built CSS (committed for zero-build deploy)
 │   └── js/                       # TypeScript components + built bundles
 ├── tests/integration/            # Supertest integration tests
@@ -121,6 +136,7 @@ homework-1/
 ├── scripts/
 │   └── generate-openapi.ts       # OpenAPI generation script
 ├── Dockerfile
+├── vercel.json                   # Vercel deployment config (framework: null, rewrites)
 ├── README.md
 └── HOWTORUN.md
 ```
