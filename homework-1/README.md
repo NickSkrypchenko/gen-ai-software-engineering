@@ -1,18 +1,126 @@
-# 🏦 Homework 1: Banking Transactions API
+# Banking Transactions API — Homework 1
 
-> **Student Name**: [Your Name]
-> **Date Submitted**: [Date]
-> **AI Tools Used**: [List tools, e.g., Claude Code, GitHub Copilot]
+**Student:** Nick Skrypchenko  
+**Course:** GenAI and Agentic AI for Software Engineering  
+**Date submitted:** 2026-04-30  
+**AI tools used:** Claude Code (claude-sonnet-4-6), Postman MCP
 
 ---
 
-## 📋 Project Overview
+## What was built
 
-[Briefly describe your implementation - what you built and the key features]
+A production-flavoured REST API for banking transactions implemented in Node.js + Express + TypeScript, delivered entirely through AI-assisted development. The application handles deposits, withdrawals, and transfers between in-memory accounts, with synchronous settlement, a full audit trail, and a polished static frontend.
 
+### Core features
 
-<div align="center">
+| Feature | Detail |
+|---|---|
+| Transaction types | `deposit`, `withdrawal`, `transfer` |
+| Settlement | Synchronous — clients never observe `pending`; always `completed` or `failed` |
+| Failure mode | `INSUFFICIENT_FUNDS` when balance in the requested currency is insufficient |
+| Multi-currency | Balances tracked per-currency; USD withdrawal cannot be paid by EUR balance |
+| Visibility filter | Failed transactions are hidden from the counterparty (`toAccount`); visible to initiator and admin |
+| CSV export | RFC 4180 compliant, filtered by the same query params as the list endpoint |
+| Account balance | Per-currency, completed-only |
+| Account summary | Per-currency deposits/withdrawals/count/lastAt, `transactionCount` includes failed rows |
+| OpenAPI 3.1 | Generated from Zod schemas via `@asteasolutions/zod-to-openapi` |
+| Frontend | Branded landing + API docs page (live Try-it panels), operator dashboard |
 
-*This project was completed as part of the AI-Assisted Development course.*
+### Architecture
 
-</div>
+```
+routes → controllers → services → repository
+```
+
+- `TransactionRepository` — sole owner of state, `Map<id, Transaction>` + `byAccount` secondary index
+- `TransactionsService` — settlement logic, `getBalance` scoped by currency, circular-dep avoided
+- `AccountsService` — read-only aggregations; `transactionCount` includes all, totals only completed
+- `ExportService` — RFC 4180 CSV serialisation with field-level quote/escape
+
+### API endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/transactions` | Create a transaction |
+| `GET` | `/api/transactions` | List transactions (with filters) |
+| `GET` | `/api/transactions/:id` | Get transaction by ID |
+| `GET` | `/api/transactions/export` | Export filtered transactions as CSV |
+| `GET` | `/api/accounts/:id/balance` | Per-currency account balance |
+| `GET` | `/api/accounts/:id/summary` | Per-currency deposits/withdrawals/count |
+| `GET` | `/health` | Health check |
+
+---
+
+## Test coverage
+
+| Layer | Files | Tests |
+|---|---|---|
+| Unit (services, validators, repo, utils) | 7 files | 104 tests |
+| Integration (HTTP via supertest) | 4 files | 41 tests |
+| **Total** | **11 files** | **145 tests** |
+
+**Coverage:** 95.85% statements · 92.68% branches · 97.77% functions  
+*(thresholds: ≥80% overall, ≥85% services/validators — all exceeded)*
+
+---
+
+## AI usage summary
+
+All implementation phases were driven by Claude Code (`claude-sonnet-4-6`). Full prompt log and decisions documented in [`docs/AI-USAGE.md`](docs/AI-USAGE.md).
+
+| Phase | Tool | Outcome |
+|---|---|---|
+| 0 — Scaffold | Claude Code | Full folder structure + wiring |
+| 1+2 — Backend + HTTP layer | Claude Code | 145 tests, 95.85% coverage |
+| 3 — OpenAPI + Postman | Claude Code + Postman MCP | `docs/openapi.yaml` + Newman e2e |
+| 4 — Wireframes + design briefs | Claude Code | `docs/specs/wireframes.md`, `visual-brief.md` |
+| 5 — Frontend UI | `/high-end-visual-design` skill | Styled landing page + dashboard |
+| 7 — Code review | Inline review (skill unavailable) | `docs/reviews/codex-review-2026-04-29.md` |
+
+---
+
+## Known limitations
+
+- **In-memory only** — state is lost on process restart. Seeded data available via `SEED=1`.
+- No authentication or authorisation — all accounts are publicly readable.
+- No currency conversion — balances are tracked per-currency, not cross-currency.
+- `pending` status exists in the domain model (set during repo creation) but is never returned by the API.
+
+---
+
+## Project structure
+
+```
+homework-1/
+├── src/
+│   ├── app.ts                    # Express app factory (testable)
+│   ├── index.ts                  # Bootstrap entry point
+│   ├── config.ts                 # Env var parsing (Zod)
+│   ├── routes/                   # Express routers
+│   ├── controllers/              # Thin HTTP handlers
+│   ├── services/                 # Business logic (transactions, accounts, export)
+│   ├── repository/               # In-memory store + secondary index
+│   ├── validators/               # Zod schemas (single source of truth)
+│   ├── models/                   # Type aliases from z.infer
+│   ├── middleware/               # requestId, validate, errorHandler
+│   └── utils/                    # Money, clock, logger, http-errors
+├── public/
+│   ├── index.html                # Landing + API docs page
+│   ├── dashboard.html            # Operator dashboard
+│   ├── css/tailwind.css          # Built CSS (committed for zero-build deploy)
+│   └── js/                       # TypeScript components + built bundles
+├── tests/integration/            # Supertest integration tests
+├── demo/
+│   ├── postman-collection.json   # Newman e2e collection (17 requests, 51 assertions)
+│   └── sample-data.json          # Seed data (10 transactions across 3 accounts)
+├── docs/
+│   ├── AI-USAGE.md               # Prompt log + decisions per phase
+│   ├── openapi.yaml              # OpenAPI 3.1 (generated from Zod schemas)
+│   ├── reviews/codex-review-2026-04-29.md
+│   └── specs/                    # Design spec, wireframes, visual brief
+├── scripts/
+│   └── generate-openapi.ts       # OpenAPI generation script
+├── Dockerfile
+├── README.md
+└── HOWTORUN.md
+```
