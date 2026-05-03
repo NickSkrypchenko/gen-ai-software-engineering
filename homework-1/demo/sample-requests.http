@@ -1,0 +1,70 @@
+### Banking Transactions API — sample requests
+### Run top-to-bottom against: npm run dev  (http://localhost:3000)
+
+@baseUrl = http://localhost:3000
+
+### 1. Health check
+GET {{baseUrl}}/health
+
+### 2. Deposit to ACC-AAAAA
+POST {{baseUrl}}/api/transactions
+Content-Type: application/json
+
+{
+  "fromAccount": "EXTERNAL",
+  "toAccount": "ACC-AAAAA",
+  "amount": 1000.00,
+  "currency": "USD",
+  "type": "deposit"
+}
+
+### 3. Deposit EUR to ACC-BBBBB
+POST {{baseUrl}}/api/transactions
+Content-Type: application/json
+
+{
+  "fromAccount": "EXTERNAL",
+  "toAccount": "ACC-BBBBB",
+  "amount": 500.00,
+  "currency": "EUR",
+  "type": "deposit"
+}
+
+### 4. Transfer USD from ACC-AAAAA to ACC-BBBBB
+POST {{baseUrl}}/api/transactions
+Content-Type: application/json
+
+{
+  "fromAccount": "ACC-AAAAA",
+  "toAccount": "ACC-BBBBB",
+  "amount": 250.00,
+  "currency": "USD",
+  "type": "transfer"
+}
+
+### 5. Failed withdrawal (insufficient funds on fresh account)
+POST {{baseUrl}}/api/transactions
+Content-Type: application/json
+
+{
+  "fromAccount": "ACC-CCCCC",
+  "toAccount": "EXTERNAL",
+  "amount": 9999.00,
+  "currency": "USD",
+  "type": "withdrawal"
+}
+
+### 6. List all transactions
+GET {{baseUrl}}/api/transactions
+
+### 7. List transactions for ACC-AAAAA
+GET {{baseUrl}}/api/transactions?accountId=ACC-AAAAA
+
+### 8. Get ACC-AAAAA balance
+GET {{baseUrl}}/api/accounts/ACC-AAAAA/balance
+
+### 9. Get ACC-AAAAA summary
+GET {{baseUrl}}/api/accounts/ACC-AAAAA/summary
+
+### 10. Export CSV for ACC-AAAAA
+GET {{baseUrl}}/api/transactions/export?accountId=ACC-AAAAA

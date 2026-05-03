@@ -1,0 +1,903 @@
+openapi: 3.1.0
+info:
+  title: Banking Transactions API
+  version: 1.0.0
+  description: REST API for banking transactions — Homework 1
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+components:
+  schemas:
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          pattern: ^txn_[0-9A-HJKMNP-TV-Z]{26}$
+        fromAccount:
+          anyOf:
+            - type: string
+              pattern: ^ACC-[A-Z0-9]{5}$
+            - type: string
+              enum:
+                - EXTERNAL
+        toAccount:
+          anyOf:
+            - type: string
+              pattern: ^ACC-[A-Z0-9]{5}$
+            - type: string
+              enum:
+                - EXTERNAL
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          enum:
+            - USD
+            - EUR
+            - GBP
+            - JPY
+            - CHF
+            - CAD
+            - AUD
+            - SEK
+            - NOK
+            - DKK
+            - PLN
+            - CZK
+        type:
+          type: string
+          enum:
+            - deposit
+            - withdrawal
+            - transfer
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum:
+            - pending
+            - completed
+            - failed
+        failureReason:
+          type:
+            - string
+            - 'null'
+          enum:
+            - INSUFFICIENT_FUNDS
+      required:
+        - id
+        - fromAccount
+        - toAccount
+        - amount
+        - currency
+        - type
+        - timestamp
+        - status
+        - failureReason
+      description: A banking transaction record
+    CreateTransactionRequest:
+      type: object
+      properties:
+        fromAccount:
+          anyOf:
+            - type: string
+              pattern: ^ACC-[A-Z0-9]{5}$
+            - type: string
+              enum:
+                - EXTERNAL
+        toAccount:
+          anyOf:
+            - type: string
+              pattern: ^ACC-[A-Z0-9]{5}$
+            - type: string
+              enum:
+                - EXTERNAL
+        amount:
+          type: number
+          exclusiveMinimum: 0
+        currency:
+          type: string
+          enum:
+            - USD
+            - EUR
+            - GBP
+            - JPY
+            - CHF
+            - CAD
+            - AUD
+            - SEK
+            - NOK
+            - DKK
+            - PLN
+            - CZK
+        type:
+          type: string
+          enum:
+            - deposit
+            - withdrawal
+            - transfer
+      required:
+        - fromAccount
+        - toAccount
+        - amount
+        - currency
+        - type
+      additionalProperties: false
+      description: Request body for creating a transaction
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+        message:
+          type: string
+      required:
+        - field
+        - message
+      description: A single validation error detail
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - NOT_FOUND
+            - UNSUPPORTED_MEDIA_TYPE
+            - INTERNAL
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+            required:
+              - field
+              - message
+        requestId:
+          type: string
+      required:
+        - error
+        - code
+        - requestId
+      description: Uniform error response
+  parameters: {}
+paths:
+  /health:
+    get:
+      summary: Health check
+      tags:
+        - System
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                  uptime:
+                    type: integer
+                  version:
+                    type: string
+                required:
+                  - status
+                  - uptime
+                  - version
+  /api/transactions:
+    post:
+      summary: Create a transaction
+      tags:
+        - Transactions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fromAccount:
+                  anyOf:
+                    - type: string
+                      pattern: ^ACC-[A-Z0-9]{5}$
+                    - type: string
+                      enum:
+                        - EXTERNAL
+                toAccount:
+                  anyOf:
+                    - type: string
+                      pattern: ^ACC-[A-Z0-9]{5}$
+                    - type: string
+                      enum:
+                        - EXTERNAL
+                amount:
+                  type: number
+                  exclusiveMinimum: 0
+                currency:
+                  type: string
+                  enum:
+                    - USD
+                    - EUR
+                    - GBP
+                    - JPY
+                    - CHF
+                    - CAD
+                    - AUD
+                    - SEK
+                    - NOK
+                    - DKK
+                    - PLN
+                    - CZK
+                type:
+                  type: string
+                  enum:
+                    - deposit
+                    - withdrawal
+                    - transfer
+              required:
+                - fromAccount
+                - toAccount
+                - amount
+                - currency
+                - type
+              additionalProperties: false
+      responses:
+        '201':
+          description: Transaction created (may have status=failed if business rules rejected it)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^txn_[0-9A-HJKMNP-TV-Z]{26}$
+                  fromAccount:
+                    anyOf:
+                      - type: string
+                        pattern: ^ACC-[A-Z0-9]{5}$
+                      - type: string
+                        enum:
+                          - EXTERNAL
+                  toAccount:
+                    anyOf:
+                      - type: string
+                        pattern: ^ACC-[A-Z0-9]{5}$
+                      - type: string
+                        enum:
+                          - EXTERNAL
+                  amount:
+                    type: number
+                    exclusiveMinimum: 0
+                  currency:
+                    type: string
+                    enum:
+                      - USD
+                      - EUR
+                      - GBP
+                      - JPY
+                      - CHF
+                      - CAD
+                      - AUD
+                      - SEK
+                      - NOK
+                      - DKK
+                      - PLN
+                      - CZK
+                  type:
+                    type: string
+                    enum:
+                      - deposit
+                      - withdrawal
+                      - transfer
+                  timestamp:
+                    type: string
+                    format: date-time
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - completed
+                      - failed
+                  failureReason:
+                    type:
+                      - string
+                      - 'null'
+                    enum:
+                      - INSUFFICIENT_FUNDS
+                required:
+                  - id
+                  - fromAccount
+                  - toAccount
+                  - amount
+                  - currency
+                  - type
+                  - timestamp
+                  - status
+                  - failureReason
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+    get:
+      summary: List transactions
+      tags:
+        - Transactions
+      parameters:
+        - schema:
+            type: string
+            pattern: ^ACC-[A-Z0-9]{5}$
+          required: false
+          name: accountId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - deposit
+              - withdrawal
+              - transfer
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: to
+          in: query
+      responses:
+        '200':
+          description: Paginated transaction list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          pattern: ^txn_[0-9A-HJKMNP-TV-Z]{26}$
+                        fromAccount:
+                          anyOf:
+                            - type: string
+                              pattern: ^ACC-[A-Z0-9]{5}$
+                            - type: string
+                              enum:
+                                - EXTERNAL
+                        toAccount:
+                          anyOf:
+                            - type: string
+                              pattern: ^ACC-[A-Z0-9]{5}$
+                            - type: string
+                              enum:
+                                - EXTERNAL
+                        amount:
+                          type: number
+                          exclusiveMinimum: 0
+                        currency:
+                          type: string
+                          enum:
+                            - USD
+                            - EUR
+                            - GBP
+                            - JPY
+                            - CHF
+                            - CAD
+                            - AUD
+                            - SEK
+                            - NOK
+                            - DKK
+                            - PLN
+                            - CZK
+                        type:
+                          type: string
+                          enum:
+                            - deposit
+                            - withdrawal
+                            - transfer
+                        timestamp:
+                          type: string
+                          format: date-time
+                        status:
+                          type: string
+                          enum:
+                            - pending
+                            - completed
+                            - failed
+                        failureReason:
+                          type:
+                            - string
+                            - 'null'
+                          enum:
+                            - INSUFFICIENT_FUNDS
+                      required:
+                        - id
+                        - fromAccount
+                        - toAccount
+                        - amount
+                        - currency
+                        - type
+                        - timestamp
+                        - status
+                        - failureReason
+                  count:
+                    type: integer
+                required:
+                  - data
+                  - count
+        '400':
+          description: Invalid filter parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+  /api/transactions/export:
+    get:
+      summary: Export transactions as CSV
+      tags:
+        - Transactions
+      parameters:
+        - schema:
+            type: string
+            pattern: ^ACC-[A-Z0-9]{5}$
+          required: false
+          name: accountId
+          in: query
+        - schema:
+            type: string
+            enum:
+              - deposit
+              - withdrawal
+              - transfer
+          required: false
+          name: type
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: to
+          in: query
+      responses:
+        '200':
+          description: CSV file download
+          content:
+            text/csv:
+              schema:
+                type: string
+        '400':
+          description: Invalid filter parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+  /api/transactions/{id}:
+    get:
+      summary: Get a transaction by ID
+      tags:
+        - Transactions
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        '200':
+          description: Transaction found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    pattern: ^txn_[0-9A-HJKMNP-TV-Z]{26}$
+                  fromAccount:
+                    anyOf:
+                      - type: string
+                        pattern: ^ACC-[A-Z0-9]{5}$
+                      - type: string
+                        enum:
+                          - EXTERNAL
+                  toAccount:
+                    anyOf:
+                      - type: string
+                        pattern: ^ACC-[A-Z0-9]{5}$
+                      - type: string
+                        enum:
+                          - EXTERNAL
+                  amount:
+                    type: number
+                    exclusiveMinimum: 0
+                  currency:
+                    type: string
+                    enum:
+                      - USD
+                      - EUR
+                      - GBP
+                      - JPY
+                      - CHF
+                      - CAD
+                      - AUD
+                      - SEK
+                      - NOK
+                      - DKK
+                      - PLN
+                      - CZK
+                  type:
+                    type: string
+                    enum:
+                      - deposit
+                      - withdrawal
+                      - transfer
+                  timestamp:
+                    type: string
+                    format: date-time
+                  status:
+                    type: string
+                    enum:
+                      - pending
+                      - completed
+                      - failed
+                  failureReason:
+                    type:
+                      - string
+                      - 'null'
+                    enum:
+                      - INSUFFICIENT_FUNDS
+                required:
+                  - id
+                  - fromAccount
+                  - toAccount
+                  - amount
+                  - currency
+                  - type
+                  - timestamp
+                  - status
+                  - failureReason
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+  /api/accounts/{accountId}/balance:
+    get:
+      summary: Get account balance
+      tags:
+        - Accounts
+      parameters:
+        - schema:
+            type: string
+            pattern: ^ACC-[A-Z0-9]{5}$
+          required: true
+          name: accountId
+          in: path
+      responses:
+        '200':
+          description: Account balance per currency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                    pattern: ^ACC-[A-Z0-9]{5}$
+                  balances:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        currency:
+                          type: string
+                          enum:
+                            - USD
+                            - EUR
+                            - GBP
+                            - JPY
+                            - CHF
+                            - CAD
+                            - AUD
+                            - SEK
+                            - NOK
+                            - DKK
+                            - PLN
+                            - CZK
+                        amount:
+                          type: number
+                      required:
+                        - currency
+                        - amount
+                      description: Balance for a single currency
+                  asOf:
+                    type: string
+                    format: date-time
+                required:
+                  - accountId
+                  - balances
+                  - asOf
+                description: Account balance response
+        '400':
+          description: Invalid accountId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+  /api/accounts/{accountId}/summary:
+    get:
+      summary: Get account transaction summary
+      tags:
+        - Accounts
+      parameters:
+        - schema:
+            type: string
+            pattern: ^ACC-[A-Z0-9]{5}$
+          required: true
+          name: accountId
+          in: path
+      responses:
+        '200':
+          description: Account summary per currency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                    pattern: ^ACC-[A-Z0-9]{5}$
+                  perCurrency:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        currency:
+                          type: string
+                          enum:
+                            - USD
+                            - EUR
+                            - GBP
+                            - JPY
+                            - CHF
+                            - CAD
+                            - AUD
+                            - SEK
+                            - NOK
+                            - DKK
+                            - PLN
+                            - CZK
+                        totalDeposits:
+                          type: number
+                        totalWithdrawals:
+                          type: number
+                        transactionCount:
+                          type: integer
+                        lastTransactionAt:
+                          type:
+                            - string
+                            - 'null'
+                          format: date-time
+                      required:
+                        - currency
+                        - totalDeposits
+                        - totalWithdrawals
+                        - transactionCount
+                        - lastTransactionAt
+                      description: Summary for a single currency
+                required:
+                  - accountId
+                  - perCurrency
+                description: Account summary response
+        '400':
+          description: Invalid accountId
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  code:
+                    type: string
+                    enum:
+                      - VALIDATION_ERROR
+                      - NOT_FOUND
+                      - UNSUPPORTED_MEDIA_TYPE
+                      - INTERNAL
+                  details:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                        - field
+                        - message
+                  requestId:
+                    type: string
+                required:
+                  - error
+                  - code
+                  - requestId
+                description: Uniform error response
+webhooks: {}

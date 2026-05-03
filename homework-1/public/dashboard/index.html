@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard · Banking API</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/tailwind.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    code, pre, .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+
+    /* Spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .animate-spin { animation: spin 0.8s linear infinite; }
+
+    /* Toast animation */
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    .toast-visible { animation: slideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1) forwards; }
+
+    /* Table overflow on small screens */
+    #tx-container { overflow-x: auto; }
+
+    /* focus-ring for selects/inputs */
+    select:focus, input:focus { outline: none; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-[100dvh]">
+
+  <!-- ═══ Failure warning banner ════════════════════════════════════════════ -->
+  <div id="failure-banner" class="hidden fixed top-0 left-0 right-0 z-50 flex items-center gap-3 px-6 py-3 bg-amber-50 border-b border-amber-200 text-amber-800 text-sm font-medium">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    <span id="banner-text" class="flex-1"></span>
+    <button id="dismiss-banner" aria-label="Dismiss" class="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-amber-200 transition-colors">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+  </div>
+
+  <!-- ═══ Floating pill nav ═════════════════════════════════════════════════ -->
+  <header class="sticky top-0 z-40 flex justify-between items-center px-4 sm:px-6 py-4 bg-white/80 backdrop-blur-xl border-b border-gray-100">
+    <div class="flex items-center gap-4">
+      <a href="/" class="text-sm text-gray-400 hover:text-gray-700 transition-colors flex items-center gap-1.5">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"/></svg>
+        Docs
+      </a>
+      <span class="text-gray-200">|</span>
+      <span class="text-sm font-bold text-gray-900">Dashboard</span>
+    </div>
+    <button id="new-txn-btn"
+      class="group inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98]">
+      <span>+ New Txn</span>
+      <span class="w-6 h-6 rounded-full bg-white/15 flex items-center justify-center group-hover:translate-x-0.5 group-hover:-translate-y-px transition-transform duration-300">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+      </span>
+    </button>
+  </header>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+    <div class="flex flex-col lg:flex-row gap-6">
+
+      <!-- ═══ Left sidebar ═══════════════════════════════════════════════════ -->
+      <aside class="w-full lg:w-64 shrink-0 space-y-4">
+
+        <!-- Account picker card -->
+        <div class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+          <div class="p-4 rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)]">
+            <label class="block text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-2" for="account-picker">Account</label>
+            <select id="account-picker"
+              class="w-full px-3 py-2 rounded-lg ring-1 ring-black/[0.08] bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 transition-shadow duration-200 mono">
+              <option value="">All accounts</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Balances + summary (shown when account selected) -->
+        <div id="sidebar-data" class="hidden space-y-4">
+          <!-- Balances -->
+          <div class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+            <div class="p-4 rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)]">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-3">Balances</p>
+              <div id="balance-cards" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- Summary stats -->
+          <div class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+            <div class="p-4 rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)]">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-3">Summary</p>
+              <div id="summary-stats"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- hint when no account selected -->
+        <div id="sidebar-hint" class="px-1 text-xs text-gray-400 leading-relaxed">
+          Select an account above to see its balances and summary stats.
+        </div>
+
+      </aside>
+
+      <!-- ═══ Main content ════════════════════════════════════════════════════ -->
+      <div class="flex-1 min-w-0 space-y-6">
+
+        <!-- Filters bar -->
+        <div class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+          <div class="p-4 rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)]">
+            <div class="flex flex-wrap gap-3 items-end">
+              <div class="min-w-[140px]">
+                <label class="block text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-1.5" for="f-account">Account</label>
+                <select id="f-account"
+                  class="w-full px-3 py-2 rounded-lg ring-1 ring-black/[0.08] bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 transition-shadow duration-200">
+                  <option value="">All</option>
+                </select>
+              </div>
+              <div class="min-w-[120px]">
+                <label class="block text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-1.5" for="f-type">Type</label>
+                <select id="f-type"
+                  class="w-full px-3 py-2 rounded-lg ring-1 ring-black/[0.08] bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 transition-shadow duration-200">
+                  <option value="">All</option>
+                  <option value="deposit">Deposit</option>
+                  <option value="withdrawal">Withdrawal</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-1.5" for="f-from">From date</label>
+                <input type="date" id="f-from"
+                  class="px-3 py-2 rounded-lg ring-1 ring-black/[0.08] bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 transition-shadow duration-200" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-400 mb-1.5" for="f-to">To date</label>
+                <input type="date" id="f-to"
+                  class="px-3 py-2 rounded-lg ring-1 ring-black/[0.08] bg-white text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 transition-shadow duration-200" />
+              </div>
+              <div class="ml-auto">
+                <button id="export-btn"
+                  class="inline-flex items-center gap-2 px-4 py-2 rounded-full ring-1 ring-black/[0.1] bg-white hover:bg-gray-50 text-sm font-semibold text-gray-700 transition-all duration-200 active:scale-[0.98]">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                  Export CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction table -->
+        <div class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+          <div class="rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)] overflow-hidden">
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <h2 class="text-sm font-semibold text-gray-900">Transactions</h2>
+              <span class="text-xs text-gray-400">Most recent first</span>
+            </div>
+            <!-- Desktop table / Mobile cards rendered here by JS -->
+            <div id="tx-container" class="min-h-[200px]">
+              <div class="flex items-center justify-center py-16 text-gray-400 text-sm">Loading…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- New transaction form -->
+        <div id="form-section" class="p-2 rounded-2xl ring-1 ring-black/[0.06] bg-black/[0.015]">
+          <div class="p-6 rounded-[calc(1rem-0.5rem)] bg-white shadow-[inset_0_1px_1px_rgba(255,255,255,1)]">
+            <h2 class="text-sm font-semibold text-gray-900 mb-5">New Transaction</h2>
+            <div id="tx-form-container"></div>
+          </div>
+        </div>
+
+      </div><!-- /main content -->
+    </div><!-- /flex -->
+  </div><!-- /container -->
+
+  <!-- ═══ Footer ══════════════════════════════════════════════════════════════ -->
+  <footer class="border-t border-gray-100 mt-16 py-6 px-6 text-center text-xs text-gray-400">
+    Banking Transactions API · v1.0.0
+  </footer>
+
+  <!-- ═══ Success toast ════════════════════════════════════════════════════════ -->
+  <div id="success-toast"
+    class="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 bg-green-600 text-white text-sm font-medium rounded-2xl shadow-lg translate-x-full opacity-0 transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+    <span id="toast-text"></span>
+  </div>
+
+  <script src="/js/dashboard.bundle.js"></script>
+</body>
+</html>

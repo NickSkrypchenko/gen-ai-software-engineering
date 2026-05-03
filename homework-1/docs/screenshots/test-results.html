@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Results — Banking Transactions API</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0d1117; color: #e6edf3; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.6; padding: 24px; }
+  h1 { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 20px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #8b949e; font-family: -apple-system, sans-serif; font-size: 13px; margin-bottom: 24px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .panel { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+  .panel-header { background: #21262d; border-bottom: 1px solid #30363d; padding: 12px 16px; display: flex; align-items: center; gap: 10px; }
+  .panel-title { font-family: -apple-system, sans-serif; font-size: 14px; font-weight: 600; color: #e6edf3; }
+  .badge { font-family: -apple-system, sans-serif; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+  .badge-green { background: #1f6b2b; color: #3fb950; }
+  .badge-red { background: #6e2b2b; color: #f85149; }
+  .panel-body { padding: 16px; }
+  .line { margin: 1px 0; white-space: pre; }
+  .pass { color: #3fb950; }
+  .fail { color: #f85149; }
+  .info { color: #8b949e; }
+  .bold { font-weight: 700; }
+  .check { color: #3fb950; }
+  .cross { color: #f85149; }
+  .dim { color: #484f58; }
+  .yellow { color: #d29922; }
+  .white { color: #e6edf3; }
+  .cyan { color: #39c5cf; }
+  .summary { background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 16px 20px; margin-top: 20px; display: flex; gap: 40px; align-items: center; flex-wrap: wrap; }
+  .stat { text-align: center; }
+  .stat-value { font-family: -apple-system, sans-serif; font-size: 28px; font-weight: 700; color: #3fb950; }
+  .stat-label { font-family: -apple-system, sans-serif; font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .divider { width: 1px; height: 48px; background: #30363d; }
+  .coverage-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 8px; }
+  .coverage-table th { color: #8b949e; font-weight: 600; text-align: left; padding: 4px 8px; border-bottom: 1px solid #30363d; font-family: -apple-system, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .coverage-table td { padding: 3px 8px; border-bottom: 1px solid #21262d; }
+  .coverage-table tr:last-child td { border-bottom: none; }
+  .cov-bar { display: inline-block; width: 60px; height: 8px; background: #21262d; border-radius: 4px; vertical-align: middle; margin-right: 6px; overflow: hidden; }
+  .cov-fill { height: 100%; border-radius: 4px; }
+  .cov-high { background: #2ea043; }
+  .cov-med { background: #d29922; }
+  .cov-low { background: #f85149; }
+  .newman-request { margin: 6px 0; }
+  .newman-group { color: #8b949e; font-size: 11px; font-family: -apple-system, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 12px; margin-bottom: 4px; }
+  .newman-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+  .newman-table td { padding: 2px 8px; }
+  .newman-table tr.total { border-top: 1px solid #30363d; font-weight: 600; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Test Results — Banking Transactions API</h1>
+<p class="subtitle">Generated 2026-04-30 · Node 20 · Vitest 1.6.1 · Newman 6.x</p>
+
+<div class="grid">
+
+  <!-- Unit + Integration Tests -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Unit &amp; Integration Tests (Vitest)</div>
+      <span class="badge badge-green">145 PASSED</span>
+    </div>
+    <div class="panel-body">
+      <div class="line"><span class="pass">✓</span> <span class="white">src/validators/common.schemas.test.ts</span>  <span class="dim">(25 tests) 8ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/validators/transaction.schemas.test.ts</span>  <span class="dim">(22 tests) 10ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/repository/transaction.repository.test.ts</span>  <span class="dim">(16 tests) 23ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/services/accounts.service.test.ts</span>  <span class="dim">(11 tests) 7ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/services/transactions.service.test.ts</span>  <span class="dim">(13 tests) 17ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/services/export.service.test.ts</span>  <span class="dim">(9 tests) 7ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">src/utils/money.test.ts</span>  <span class="dim">(14 tests) 16ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">tests/integration/accounts.test.ts</span>  <span class="dim">(8 tests) 119ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">tests/integration/transactions.test.ts</span>  <span class="dim">(16 tests) 205ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">tests/integration/export.test.ts</span>  <span class="dim">(6 tests) 65ms</span></div>
+      <div class="line"><span class="pass">✓</span> <span class="white">tests/integration/error-handling.test.ts</span>  <span class="dim">(5 tests) 56ms</span></div>
+
+      <div style="margin-top:14px; border-top: 1px solid #30363d; padding-top: 12px;">
+        <div class="line"><span class="white bold">Test Files  </span><span class="pass bold">11 passed</span> <span class="dim">(11)</span></div>
+        <div class="line"><span class="white bold">Tests       </span><span class="pass bold">145 passed</span> <span class="dim">(145)</span></div>
+        <div class="line"><span class="white bold">Duration    </span><span class="dim">1.53s (transform 301ms, tests 533ms)</span></div>
+      </div>
+
+      <div style="margin-top:14px; border-top: 1px solid #30363d; padding-top: 12px;">
+        <div style="font-family: -apple-system, sans-serif; font-size: 11px; color: #8b949e; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;">Coverage Report (v8)</div>
+        <table class="coverage-table">
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Stmts</th>
+              <th>Branch</th>
+              <th>Funcs</th>
+              <th>Lines</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="white bold">All files</td>
+              <td><span class="pass bold">95.96%</span></td>
+              <td><span class="pass bold">92.68%</span></td>
+              <td><span class="pass bold">97.77%</span></td>
+              <td><span class="pass bold">95.96%</span></td>
+            </tr>
+            <tr><td class="cyan">src</td><td>100%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+            <tr><td class="cyan">src/controllers</td><td>86.51%</td><td>62.5%</td><td>100%</td><td>86.51%</td></tr>
+            <tr><td class="cyan">src/middleware</td><td>85.91%</td><td>90.47%</td><td>100%</td><td>85.91%</td></tr>
+            <tr><td class="cyan">src/repository</td><td>100%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+            <tr><td class="cyan">src/routes</td><td>100%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+            <tr><td class="cyan">src/services</td><td>98.02%</td><td>93.18%</td><td>100%</td><td>98.02%</td></tr>
+            <tr><td class="cyan">src/utils</td><td>94.36%</td><td>93.75%</td><td>87.5%</td><td>94.36%</td></tr>
+            <tr><td class="cyan">src/validators</td><td>100%</td><td>100%</td><td>100%</td><td>100%</td></tr>
+          </tbody>
+        </table>
+        <div style="margin-top: 8px; font-family: -apple-system, sans-serif; font-size: 11px; color: #3fb950;">
+          ✓ Thresholds met: ≥80% overall · ≥85% services/validators
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Newman E2E -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">E2E Tests (Newman / Postman)</div>
+      <span class="badge badge-green">51/51 ASSERTIONS</span>
+    </div>
+    <div class="panel-body">
+
+      <div class="newman-group">System</div>
+      <div class="line"><span class="pass">✓</span> Health check  <span class="dim">GET /health → 200</span></div>
+      <div class="line dim" style="padding-left:16px">✓ status 200  ✓ status field is ok  ✓ uptime  ✓ version</div>
+
+      <div class="newman-group" style="margin-top: 10px;">Transactions</div>
+      <div class="line"><span class="pass">✓</span> Create deposit (happy path)  <span class="dim">→ 201</span></div>
+      <div class="line"><span class="pass">✓</span> Create failed withdrawal (insufficient funds)  <span class="dim">→ 201 failed</span></div>
+      <div class="line"><span class="pass">✓</span> Validation error — invalid currency  <span class="dim">→ 400</span></div>
+      <div class="line"><span class="pass">✓</span> Validation error — transfer same account  <span class="dim">→ 400</span></div>
+      <div class="line"><span class="pass">✓</span> Validation error — extra field rejected  <span class="dim">→ 400</span></div>
+      <div class="line"><span class="pass">✓</span> List all transactions  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> List filtered by accountId  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> List invalid filter → 400</div>
+      <div class="line"><span class="pass">✓</span> Get transaction by ID  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> Get transaction by ID → 404</div>
+      <div class="line"><span class="pass">✓</span> Export CSV  <span class="dim">→ 200 text/csv</span></div>
+
+      <div class="newman-group" style="margin-top: 10px;">Accounts</div>
+      <div class="line"><span class="pass">✓</span> Get balance (empty account)  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> Get balance (funded account)  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> Get balance — invalid accountId → 400</div>
+      <div class="line"><span class="pass">✓</span> Get summary (funded account)  <span class="dim">→ 200</span></div>
+      <div class="line"><span class="pass">✓</span> Get summary — invalid accountId → 400</div>
+
+      <div style="margin-top: 14px; border-top: 1px solid #30363d; padding-top: 12px;">
+        <table class="newman-table">
+          <tr>
+            <td class="dim">iterations</td>
+            <td class="pass bold">1</td>
+            <td class="dim">failed</td>
+            <td class="pass bold">0</td>
+          </tr>
+          <tr>
+            <td class="dim">requests</td>
+            <td class="pass bold">17</td>
+            <td class="dim">failed</td>
+            <td class="pass bold">0</td>
+          </tr>
+          <tr>
+            <td class="dim">assertions</td>
+            <td class="pass bold">51</td>
+            <td class="dim">failed</td>
+            <td class="pass bold">0</td>
+          </tr>
+          <tr class="total">
+            <td class="dim">total duration</td>
+            <td class="white bold">309ms</td>
+            <td class="dim">avg response</td>
+            <td class="white bold">4ms</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Summary bar -->
+<div class="summary">
+  <div class="stat">
+    <div class="stat-value">145</div>
+    <div class="stat-label">Unit + Integration Tests</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-value">51</div>
+    <div class="stat-label">E2E Assertions</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-value">0</div>
+    <div class="stat-label" style="color: #3fb950;">Failures</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-value">95.96%</div>
+    <div class="stat-label">Statement Coverage</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-value">92.68%</div>
+    <div class="stat-label">Branch Coverage</div>
+  </div>
+  <div class="divider"></div>
+  <div class="stat">
+    <div class="stat-value">97.77%</div>
+    <div class="stat-label">Function Coverage</div>
+  </div>
+</div>
+
+</body>
+</html>
