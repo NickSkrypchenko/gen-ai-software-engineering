@@ -29,7 +29,9 @@ This document is the implementation contract for Homework 2. Claude Code is the 
 
 **TypeScript end-to-end.** Backend and frontend share types via `import type`. Zod schemas are the single source of truth for runtime validation, TypeScript types (`z.infer`), and the OpenAPI document (`zod-to-openapi`). Drizzle adds a fourth derivative — DB row types via `InferSelectModel`. Enum value arrays live in `domain/ticket.ts` (no DB imports) so the frontend can import them at runtime without dragging in Drizzle.
 
-**Persistent storage on Neon Postgres.** Three branches per project: `main` (production), `dev` (local), `test` (Vitest test suite). Same migrations applied to each branch. Drizzle ORM with copy-on-write data isolation between branches. Connection pooling via Neon's `-pooler` URL suffix.
+**Persistent storage on Neon Postgres.** Three branches per project: `main` (production), `dev` (local), `test` (Vitest test suite). Same migrations applied to each branch. Drizzle ORM with copy-on-write data isolation between branches.
+
+**Connection pooling on Vercel.** Each cold start of the serverless function instantiates a new Drizzle client. The Neon `-pooler` URL suffix (e.g. `ep-XXX-pooler.neon.tech`) routes to Neon's PgBouncer-compatible pooler, which multiplexes connections **across ephemeral function instances** server-side. Application code does **not** call `pool.end()` in production paths — Vercel handles function teardown. Locally, `pool.end()` is called only in `tests/setup.ts` `afterAll` so Vitest exits cleanly.
 
 ---
 
@@ -129,7 +131,10 @@ homework-2/
 - Frontend MAY: `import type` from anywhere in `src/`.
 - Frontend MAY: `import` (runtime) **only from `src/domain/`** — no DB/IO dependencies.
 - Frontend MUST NOT: `import` (runtime) from `src/db/`, `src/repository/`, `src/services/`, `src/middleware/`, `src/utils/logger.ts`.
-- Enforced by `tsconfig.web.json` `"verbatimModuleSyntax": true` + esbuild bundler resolution failures as safety net.
+- Enforced at three layers (defense in depth):
+  1. `tsconfig.web.json` — `"verbatimModuleSyntax": true` (TS errors if value-import is used as type or vice versa).
+  2. **ESLint** in `public/js/.eslintrc.json` — `no-restricted-imports` with `patterns: [{ group: ["**/src/db/**","**/src/repository/**","**/src/services/**","**/src/middleware/**","**/src/utils/logger*"], message: "Frontend cannot import from backend infrastructure. Use src/domain/ or src/validators/ (type-only) only." }]`. Catches violations at editor save, before bundling.
+  3. esbuild bundler — fails to resolve Drizzle/pg/pino dependencies if accidentally pulled in. Last-line safety net.
 
 ---
 
@@ -194,12 +199,21 @@ Every `Ticket` response carries `version: integer` (starts at 1, increments on a
     ```
 - Server check: `UPDATE tickets SET ..., version = version + 1 WHERE id = :id AND version = :expected RETURNING *`. Zero rows updated → fetch current version, raise `412`.
 
+**All four mutating endpoints follow the identical optimistic-concurrency contract:**
+
+- `PUT /tickets/:id`
+- `DELETE /tickets/:id`
+- `POST /tickets/:id/transitions`
+- `POST /tickets/:id/auto-classify`
+
+Each requires `If-Match`, each performs a version-checked update inside a transaction, each increments `version` on success. **No exception for auto-classify** — even though it's "the system" doing the work, a concurrent user PUT must not be silently overwritten by a classification result. Auto-classify accepts `expectedVersion` from the controller (parsed from `If-Match` header) and threads it down to the repository update predicate.
+
 **Frontend strategy:** `api-client.ts` caches version per ticket id; auto-applies `If-Match`. Selective auto-retry once on `412`:
 
 | Operation | Auto-retry? | Reason |
 |---|:---:|---|
 | `updateTicket` (PUT) | ✓ | Idempotent in intent |
-| `autoClassify` | ✓ | Pure function |
+| `autoClassify` | ✓ | Pure function over current ticket state |
 | `transitionTicket` | ✗ | State change; FSM may differ on new version |
 | `deleteTicket` | ✗ | Destructive; user re-confirms |
 
@@ -256,6 +270,8 @@ Illegal transition → `422 Unprocessable Entity`:
 ```
 
 **Side effects on transition:** to `resolved` sets `resolved_at = now`. Reopen out of `resolved`/`closed` clears `resolved_at = null`. Implemented in repository inside the same transaction as status update + audit log insert.
+
+**`resolved_at` semantics — most-recent, not first.** If a ticket is resolved, reopened, then resolved again, `resolved_at` reflects the **most recent** resolution timestamp, not the original one. Rationale: operators looking at a ticket want to know "when was this last fixed?", not "did this ever get fixed?". The full history of resolve/reopen events is preserved in `ticket_transitions` for audit; `resolved_at` is a denormalized convenience for fast queries (e.g. SLA reports filtered by recent resolution date).
 
 ### 3.5 Bulk import response
 
@@ -414,30 +430,69 @@ Both `db/schema.ts` (`pgEnum`) and `validators/*.schemas.ts` (`z.enum`) import t
 // repository/ticket.repository.ts
 async transition(ticketId: string, to: TicketStatus, expectedVersion: number, reason?: string, by?: string) {
   return await db.transaction(async (tx) => {
-    // 1. Optimistic check + update
+    // 0. Read current row (locked) to know fromStatus + verify version
+    const [current] = await tx.select().from(tickets)
+      .where(eq(tickets.id, ticketId)).for('update');
+    if (!current) throw new NotFoundError(ticketId);
+    if (current.version !== expectedVersion) throw new VersionConflictError(current.version, expectedVersion);
+
+    // 1. Update + version bump
     const [updated] = await tx.update(tickets)
       .set({
         status: to,
         updatedAt: clock.now(),
         version: sql`${tickets.version} + 1`,
         resolvedAt: to === 'resolved' ? clock.now()
-                  : (currentStatus === 'resolved' || currentStatus === 'closed') ? null
-                  : tickets.resolvedAt,
+                  : (current.status === 'resolved' || current.status === 'closed') ? null
+                  : current.resolvedAt,
       })
       .where(and(eq(tickets.id, ticketId), eq(tickets.version, expectedVersion)))
       .returning();
-    if (!updated) throw new VersionConflictError(/* fetch current */);
 
-    // 2. Audit log entry (same transaction)
+    // 2. Audit log entry (same transaction — atomic with status change)
     await tx.insert(ticketTransitions).values({
-      id: uuidv7(), ticketId, fromStatus: currentStatus, toStatus: to,
+      id: uuidv7(), ticketId, fromStatus: current.status, toStatus: to,
       changedAt: updated.updatedAt, changedBy: by ?? 'system', reason,
     });
 
     return updated;
   });
 }
+
+// services/classify.service.ts — SAME concurrency contract as transition()
+async classifyAndPersist(ticketId: string, expectedVersion: number, source: 'auto' | 'manual_override' = 'auto', overrideResult?: ClassificationResult) {
+  return await db.transaction(async (tx) => {
+    // 0. Lock row + verify version (auto-classify is NOT exempt from optimistic concurrency)
+    const [current] = await tx.select().from(tickets)
+      .where(eq(tickets.id, ticketId)).for('update');
+    if (!current) throw new NotFoundError(ticketId);
+    if (current.version !== expectedVersion) throw new VersionConflictError(current.version, expectedVersion);
+
+    const result = overrideResult ?? classify(current.subject + '\n' + current.description);
+    const now = clock.now();
+
+    // 1. Append to classifications history (audit log — append-only)
+    await tx.insert(classifications).values({
+      id: uuidv7(), ticketId, ...result, source, classifiedAt: now,
+    });
+
+    // 2. Update current category/priority on ticket (denormalized snapshot for fast reads)
+    const [updated] = await tx.update(tickets)
+      .set({
+        category: result.category,
+        priority: result.priority,
+        updatedAt: now,
+        version: sql`${tickets.version} + 1`,
+      })
+      .where(and(eq(tickets.id, ticketId), eq(tickets.version, expectedVersion)))
+      .returning();
+
+    return { result, ticket: updated };
+  });
+}
 ```
+
+**Why version check matters here:** without it, a concurrent `PUT /tickets/:id` that changed `category: 'billing'` would be silently overwritten by an auto-classify result of `category: 'technical_issue'` — even though the user explicitly set the category. With the check, the classifier sees a version mismatch and returns `412`; the client's auto-retry strategy (§3.3) re-fetches the ticket (now showing the user's `'billing'` category in the subject/description? unlikely — but the user's intent wins).
 
 ### 4.4 Zod schemas (single source of truth for validation)
 
@@ -530,7 +585,41 @@ export function classify(text: string): ClassificationResult {
 }
 ```
 
-**Pure function.** No I/O. Deterministic. Case-insensitive. Substring (phrase) match. Rules ordered by specificity — `bug_report` precedes `technical_issue`, etc. Confidence bounded [0, 1].
+**Pure function.** No I/O. Deterministic. Case-insensitive. Substring (phrase) match. Confidence bounded [0, 1].
+
+**Tie-breaking by array order, intentionally.** When a text matches keywords from multiple categories or priorities, the **first match wins** by array position. This is deliberate — categories are listed in **specificity-descending order** (most specific first):
+
+```
+CATEGORY_RULES order (locked, do not reorder casually):
+  1. bug_report          ← "stack trace" is more diagnostic than "crash" alone
+  2. account_access      ← "login" + "password" are unambiguous
+  3. billing_question    ← "invoice" / "payment" are unambiguous
+  4. technical_issue     ← "crash"/"error" are too generic — last resort
+  5. feature_request     ← "would be nice" / "wishlist" — distinct register
+  6. (other)             ← fallback
+```
+
+**Example:** "Cannot log in after security breach. Stack trace: ..." matches both `bug_report` (`"stack trace"`) and `account_access` (`"log in"`). `bug_report` wins because it's first — and that's right: the diagnostic signal ("stack trace") is more actionable for routing than the symptom signal ("login failure").
+
+**Pinned ordering test** (`src/domain/classifier.test.ts`):
+
+```ts
+test('CATEGORY_RULES are listed in specificity-descending order', () => {
+  // If someone reorders this list, this assertion breaks loudly.
+  expect(CATEGORY_RULES.map(r => r.category)).toEqual([
+    'bug_report', 'account_access', 'billing_question',
+    'technical_issue', 'feature_request',
+  ]);
+});
+
+test('overlap test: bug_report wins over technical_issue', () => {
+  expect(classify('crash with stack trace at line 42').category).toBe('bug_report');
+});
+```
+
+**Rejected alternatives** (documented for reviewers):
+- *Numeric `precedence` field on each rule.* Redundant with array order — adds a second source of truth.
+- *Max-count merge (winner = most matched keywords).* Changes semantics in the wrong direction: a generic "error" + "crash" (technical_issue, 2 hits) would beat "stack trace" alone (bug_report, 1 hit), but the diagnostic signal "stack trace" is more useful for routing.
 
 ### 4.6 Importer interface
 
@@ -548,6 +637,34 @@ export const importers: Record<Format, Importer> = { csv, json, xml };
 ```
 
 Parsers do **not** validate against `CreateTicketSchema` — only format-mapping. Validation is a separate step in `import.service.ts` using the same schema as `POST /tickets`. Parsers/validators/inserts collect errors per-row and the service aggregates the summary.
+
+**`bulkInsert` semantics — partial success via SAVEPOINTs, not all-or-nothing.** The brief requires "Return bulk import summary: total records, successful, failed with error details" — implying partial success. The repository implements this with one outer transaction wrapping per-row SAVEPOINTs:
+
+```ts
+// repository/ticket.repository.ts
+async bulkInsert(rows: CreateTicketInput[]): Promise<{ inserted: Ticket[]; insertErrors: InsertError[] }> {
+  const inserted: Ticket[] = [];
+  const insertErrors: InsertError[] = [];
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < rows.length; i++) {
+      try {
+        await tx.execute(sql`SAVEPOINT row_${i}`);
+        const [t] = await tx.insert(tickets).values({ id: uuidv7(), ...rows[i] }).returning();
+        await tx.execute(sql`RELEASE SAVEPOINT row_${i}`);
+        inserted.push(t);
+      } catch (e) {
+        await tx.execute(sql`ROLLBACK TO SAVEPOINT row_${i}`);
+        insertErrors.push({ rowIndex: i + 1, message: extractDbErrorMessage(e) });
+      }
+    }
+  });
+  return { inserted, insertErrors };
+}
+```
+
+Why SAVEPOINTs (not separate transactions): rolled-back rows release no constraint locks, the outer transaction guarantees that a connection-level failure rolls back everything atomically, and the import either finishes wholly (with partial successes) or wholly fails (no partial state visible). Each row's failure is isolated; the rest continues. Partial success is the explicit, expected outcome.
+
+**Insert errors come from:** unique constraint violations (duplicate UUID — astronomically unlikely with UUID v7 but defended), CHECK constraint violations (defense in depth — Zod should have caught them, but DB CHECKs catch raw inserts too), serialization failures (rare on a single connection).
 
 **CSV (`papaparse`):** flat headers with dot-notation for nested fields (`metadata.source`); local `unflattenRow()` reconstructs nested objects (~15 LOC, no `flat` library); `tags` is comma-separated within a cell.
 
@@ -669,11 +786,12 @@ Pipeline: Zod → OpenAPI 3.1 (`zod-to-openapi`) → `docs/openapi.yaml` → Pos
 
 ### 6.4 Layer 4 — Performance & concurrent
 
-**4a. Concurrency correctness (Vitest, ~3 tests):**
+**4a. Concurrency correctness (Vitest, ~4 tests):**
 
-- 20 concurrent PUTs with same `If-Match`: exactly 1 wins (`200`), 19 get `412`. Winner has `version + 1`.
-- 20 concurrent imports (same file): no row corruption; `ticket_ids` unique.
-- PUT + auto-classify race: both succeed in sequence; version increments twice.
+- **20 concurrent PUTs on same ticket** with same `If-Match`: exactly 1 wins (`200`), 19 get `412`. Winner has `version + 1`. Tests optimistic concurrency on a single row.
+- **20 concurrent POSTs** (creates) with different `customer_id`: all 20 return `201`, no errors. Tests that the bulk-of-different-rows case has no false sharing — there should be no contention because rows don't collide.
+- **20 concurrent imports** (same file): no row corruption; `ticket_ids` unique across all responses; sum of `succeeded` across all 20 = 20 × file row count (each request inserts a fresh batch).
+- **PUT + auto-classify race** on same ticket: only one wins; the other gets `412`. Tests that auto-classify honors optimistic concurrency (regression test for the classifier-version-check fix).
 
 **4b. Performance benchmarks (autocannon, separate scripts):**
 
@@ -685,6 +803,15 @@ npm run perf:bench     # all three
 ```
 
 Raw outputs in `docs/perf-results/*.json` (committed). Curated table in `TESTING_GUIDE.md` (manually updated or via `npm run perf:summary` script).
+
+### 6.4c TESTING_GUIDE Troubleshooting requirement
+
+The Phase-11c `TESTING_GUIDE.md` must include a Troubleshooting section covering at minimum:
+
+- **Flaky concurrency tests** — what to do if `tests/performance/concurrent-mutations.test.ts` fails intermittently (increase delay, reduce concurrency, check Neon performance, verify TRUNCATE happened).
+- **Newman timeouts** — when a Newman test fails on slow endpoints (`--timeout` flag, server health check, Neon connectivity).
+- **Performance benchmarks vary** — autocannon results are environment-dependent (CPU, network, Neon region). Document baseline measurement environment so re-runs are comparable.
+- **DB schema out of sync** — symptoms of unapplied migration after `db:generate`, recovery path (`db:migrate` or `db:reset` for dev/test only).
 
 ### 6.5 What we don't test (called out in README)
 
@@ -770,8 +897,8 @@ CI uses containerized Postgres (not Neon — public repo, no key risk; ephemeral
 
 ### 7.3 Phase ordering rules
 
-- **`docs/AI-USAGE.md` is a living document** — append after every code-producing phase (0, 1, 2, 3, 4, 5, 6, 8, 10, 11, 13). Phase 15 = consolidation.
-- **Phase 2 blocks on Phase 1** — Drizzle imports enums from `domain/ticket.ts`.
+- **`docs/AI-USAGE.md` is a living document** — append a section after every AI-driven phase (0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11a-e, 13). Phases 9, 12, 14 (orchestration of CLI tools or screenshot capture) get a one-liner each. Phase 15 = consolidation pass: re-read, dedupe, fix references, add decisions log. Phase 10 (`/codex:review`) often forces edits to earlier phases — those updates land here too.
+- **Phase 2 blocks on Phase 1** — Drizzle imports enums from `domain/ticket.ts`. **Enum-modification discipline:** any change to a `TICKET_*` array in `domain/ticket.ts` MUST be followed immediately by `npm run db:generate && npm run db:migrate` against `dev` and `test` branches. Never commit a generated migration without applying it locally — leaving migrations unapplied creates a DB-vs-schema drift that the next person can't reproduce. Document this rule in `HOWTORUN.md` "After modifying enums" section.
 - **Phase 5 blocks on Phases 1-4** — OpenAPI generated from stable Zod schemas.
 - **Phase 8 blocks on Phase 7** — visual-brief required for `/high-end-visual-design`.
 - **Phase 10 blocks on Phases 1-9 except docs**. Re-run if Phase 8 produced significant frontend code.
@@ -783,7 +910,7 @@ CI uses containerized Postgres (not Neon — public repo, no key risk; ephemeral
 
 > Review for: (1) state machine correctness + `resolved_at` side effects in transactions; (2) classifier determinism + ordering (`bug_report` wins over `technical_issue`); (3) optimistic concurrency atomicity; (4) importer error contracts + 1-based row indexing; (5) audit log append-only invariant (no UPDATE/DELETE outside cascade); (6) frontend type-sharing rules (no runtime imports from DB/repository/services).
 >
-> Out of scope: production-grade money handling (no money here), authentication, scaling beyond Vercel free tier, schema migration rollback strategy.
+> Out of scope: authentication, scaling beyond Vercel free tier, schema migration rollback strategy, LLM-backed classification fallback (rules only in v1).
 >
 > Output as `docs/reviews/codex-review-<date>.md` with `[BLOCKING]`, `[SUGGESTED]`, `[INFO]` tags.
 
@@ -796,8 +923,21 @@ Spec defines responsibilities (not skill API):
 - `vercel.json` config: `framework: null`, `outputDirectory: "public"`, rewrites `/api/*` and `/health` → serverless function.
 - Env vars: `DATABASE_URL` (production Neon), `NODE_ENV=production`, `LOG_LEVEL=info`.
 - Root `tsconfig.json` includes `"lib": ["ES2022","DOM","DOM.Iterable"]` (Vercel's `tsc` pass touches all TypeScript files including frontend).
-- **Migrations NOT in build step** — applied manually via `DATABASE_URL=$NEON_PROD_URL npm run db:migrate` before deploy. Rationale in `HOWTORUN.md`.
+- **Migrations NOT in build step** — applied manually via `DATABASE_URL=$NEON_PROD_URL npm run db:migrate` before deploy. Rationale: build can fail because of DB connectivity (independent failure modes), preview deploys would race against prod, half-applied migrations leave unknown state, Vercel rollback doesn't roll back DB, build env shouldn't have prod write privileges. Documented in `HOWTORUN.md` step "Before deploying schema changes".
 - Smoke test post-deploy: `curl <url>/health` → 200, `curl <url>/api/tickets?limit=1` → 200.
+
+**Fallback if `/vercel:deploy` skill is unavailable in the live environment** (analogous to `/codex:review` fallback in HW1):
+
+```bash
+# Manual deploy procedure (documented in HOWTORUN.md)
+DATABASE_URL=$NEON_PROD_URL npm run db:migrate     # apply schema first
+npm run build                                       # tsc + esbuild + tailwindcss
+npx vercel --prod                                   # publish
+curl https://<vercel-url>/health                    # smoke
+E2E_URL=https://<vercel-url> npm run test:e2e       # full Newman against prod
+```
+
+The skill is convenience; the brief is the value. AI-USAGE.md records which path was actually taken.
 
 ### 7.6 `docs/AI-USAGE.md` template
 
