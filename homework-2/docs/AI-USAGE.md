@@ -54,6 +54,36 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 7: Wireframes + Briefs
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §5 (dashboard + landing page routes, required components, brand tone)
+- Spec §5.8 (visual-brief constraints verbatim from spec)
+- Spec §6 (review checklist criteria, perf benchmark targets)
+- Phase 3-4 outputs — all API contracts and error shapes finalised
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 7 — Wireframes + briefs. Write docs/specs/wireframes.md (ASCII-art layouts for landing + dashboard), docs/specs/visual-brief.md (brand + all required components with Tailwind class specs), docs/specs/review-brief.md (8-point checklist for /codex:review), docs/specs/perf-brief.md (autocannon setup + targets + output format).
+
+**Outcome:** accepted
+
+**What changed and why:**
+4 specification files totalling 610 lines.
+
+`wireframes.md`: ASCII-art layouts at 1280px and mobile breakpoints for both pages. Endpoint card detail spec, modal 3-tab layout, dropzone 5-state spec, shared component table (method pills, status/priority badges, stats pill, confidence indicator).
+
+`visual-brief.md`: Dark-theme palette (slate-900 base), Inter + JetBrains Mono type stack. Per-component Tailwind class specs for all required components from spec §5.8. Motion budget (translate-based modal animation, 200ms colour transitions). Accessibility checklist. Output file structure for Phase 8 skill.
+
+`review-brief.md`: 8-point review checklist covering state machine correctness (including `resolved → closed` resolved_at preservation), classifier ordering, optimistic concurrency atomicity (SAVEPOINT off-by-one risk called out explicitly), importer row indexing, audit-log append-only invariant, frontend type-sharing rules, error response shape, and DB CHECK constraints. Known acceptable deviations listed so reviewer doesn't flag them.
+
+`perf-brief.md`: 3 autocannon benchmarks with setup (server + seed + `$ID` export), conservative RPS/latency targets for single-node Neon, concurrency correctness test descriptions, raw JSON format, and measurement environment documentation requirement.
+
+---
+
 ## Phase 6: CI Workflow
 
 **Tool:** Claude Code (claude-sonnet-4-6)
