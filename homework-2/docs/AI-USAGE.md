@@ -50,4 +50,25 @@
 **Outcome:** accepted
 
 **What changed and why:**
-Created the full project skeleton matching spec §2 (module map) and §8.1 (file tree). All production config files written: `package.json` (all deps from spec §8.2), three `tsconfig` files (base/server/web), `vitest.config.ts`, `esbuild.config.mjs`, `tailwind.config.ts`, `drizzle.config.ts`, `vercel.json`. Core source files that make the dev server functional: `src/config.ts`, `src/utils/{logger,clock,http-errors}.ts`, `src/middleware/{request-id,error-handler}.ts`, `src/routes/health.routes.ts`, `src/app.ts`, `src/index.ts`, `api/index.ts`. All other `src/` files are typed stubs that will be filled in Phases 1-4. Domain files (`ticket.ts`, `classifier.ts`, `classifier-rules.ts`, `ticket-state-machine.ts`) contain their full implementation since they're pure functions needed by Phase 1 unit tests. One deliberate spec deviation: `"start"` script uses `node dist/src/index.js` instead of spec's `node dist/index.js` because `tsconfig.server.json` has `rootDir: "."` (to include both `src/` and `api/`), which places compiled output at `dist/src/index.js`.
+Created the full project skeleton matching spec §2 (module map) and §8.1 (file tree). All production config files written: `package.json` (all deps from spec §8.2), three `tsconfig` files (base/server/web), `vitest.config.ts`, `esbuild.config.mjs`, `tailwind.config.ts`, `drizzle.config.ts`, `vercel.json`. Core source files that make the dev server functional: `src/config.ts`, `src/utils/{logger,clock,http-errors}.ts`, `src/middleware/{request-id,error-handler}.ts`, `src/routes/health.routes.ts`, `src/app.ts`, `src/index.ts`, `api/index.ts`. All other `src/` files are typed stubs that will be filled in Phases 1-4. Domain files (`ticket.ts`, `classifier.ts`, `classifier-rules.ts`, `ticket-state-machine.ts`) contain their full implementation since they're pure functions needed by Phase 1 unit tests. Two deliberate spec deviations: (1) `"start"` script uses `node dist/src/index.js` instead of spec's `node dist/index.js` because `tsconfig.server.json` has `rootDir: "."` (to include both `src/` and `api/`), which places compiled output at `dist/src/index.js`; (2) `redoc-cli` replaced with `@redocly/cli` (upstream deprecated `redoc-cli`, no longer published).
+
+---
+
+## Phase 1: Domain & Validators
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §3 (API contract, optimistic concurrency, state machine, classifier ordering rationale)
+- Spec §4 (Zod schemas, §4.5 classifier tie-breaking rules, §4.4 validator shapes)
+- Phase 0 scaffold outputs — domain + validator source already written
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 1 — Domain & validators. Write unit tests for everything and confirm coverage meets the gate (≥95% on src/domain/, ≥95% lines / 90% branches on src/validators/). Domain layer was already implemented in Phase 0 scaffolding since pure functions have no dependencies.
+
+**Outcome:** accepted
+
+**What changed and why:**
+Wrote 132 unit tests across 9 test files. Tests exercise: full 5×5 state-machine transition matrix (25 `canTransition` cases), `resolved_at` side effects (resolve → reopen → re-resolve sequence), classifier ordering pin (`bug_report` wins over `technical_issue`), all 6 categories matched at least once, all 4 priorities matched at least once, confidence formula at 0/1/2/5+ keyword hits, case insensitivity, HTTP error class hierarchy (all 9 subclasses), Zod schema validation for all validator modules (CreateTicketSchema, UpdateTicketSchema, TransitionRequestSchema, ListFiltersSchema, TicketMetadataSchema, ImportQuerySchema, Email, NonEmptyString). Added a basic `createApp()` smoke test to cover middleware wiring and health route. Stub files excluded from coverage calculation until implemented (db, controllers, services, repository, importer implementations, logger) — un-excluded per phase. Final: domain 100%, validators 100%, global 89.47% lines / 90% branches (both above 85%/80% thresholds).
