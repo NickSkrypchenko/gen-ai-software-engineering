@@ -21,11 +21,8 @@ export default defineConfig({
         // Phase 3 implemented — controllers/services now covered by http-tickets.test.ts
         // error-handler covered via HTTP error paths in integration tests
 
-        // Phase 4 stubs — un-excluded once importers are implemented
-        'src/importers/csv.importer.ts',
-        'src/importers/json.importer.ts',
-        'src/importers/xml.importer.ts',
-        'src/importers/index.ts',
+        // Phase 4 implemented — importers covered by unit + HTTP integration tests
+
         // Infrastructure — logger uses pino transport; covered by Phase 3 integration tests
         'src/utils/logger.ts',
       ],

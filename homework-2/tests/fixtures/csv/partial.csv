@@ -1,0 +1,4 @@
+customer_id,customer_email,customer_name,subject,description,category,priority,tags,metadata.source
+CUST-101,valid@example.com,Valid User,Valid ticket,This is a valid description — at least 10 chars.,other,medium,,api
+BAD-102,not-an-email,Bad User,Bad ticket,Description here is also fine.,other,medium,,api
+CUST-103,another@example.com,Another User,Another valid ticket,Another description that passes validation.,other,low,,api

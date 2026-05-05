@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tickets>
+  <ticket>
+    <customer_id>CUST-X01</customer_id>
+    <customer_email>xuser1@example.com</customer_email>
+    <customer_name>XML User 1</customer_name>
+    <subject>Password reset not working</subject>
+    <description>The password reset email never arrives in my inbox.</description>
+    <category>account_access</category>
+    <priority>high</priority>
+    <tags>
+      <tag>password</tag>
+      <tag>email</tag>
+    </tags>
+    <metadata>
+      <source>api</source>
+    </metadata>
+  </ticket>
+  <ticket>
+    <customer_id>CUST-X02</customer_id>
+    <customer_email>xuser2@example.com</customer_email>
+    <customer_name>XML User 2</customer_name>
+    <subject>Invoice shows wrong amount</subject>
+    <description>My invoice for March shows an incorrect total that does not match my plan.</description>
+    <category>billing_question</category>
+    <priority>medium</priority>
+    <tags/>
+    <metadata>
+      <source>api</source>
+    </metadata>
+  </ticket>
+</tickets>

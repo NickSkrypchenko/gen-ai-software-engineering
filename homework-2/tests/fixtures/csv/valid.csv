@@ -1,0 +1,4 @@
+customer_id,customer_email,customer_name,subject,description,category,priority,tags,metadata.source
+CUST-001,alice@example.com,Alice Smith,Cannot login,My account is locked after too many failed login attempts.,account_access,high,"login,access",api
+CUST-002,bob@example.com,Bob Jones,Billing overcharge,I was charged twice for my subscription this month.,billing_question,medium,billing,api
+CUST-003,carol@example.com,Carol White,App crashes on startup,The application crashes immediately after launch with a null pointer error.,bug_report,urgent,"crash,bug",api

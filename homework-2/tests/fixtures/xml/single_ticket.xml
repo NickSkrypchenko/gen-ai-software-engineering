@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<tickets>
+  <ticket>
+    <customer_id>CUST-X10</customer_id>
+    <customer_email>single@example.com</customer_email>
+    <customer_name>Single User</customer_name>
+    <subject>Single ticket XML test</subject>
+    <description>Testing that a single XML ticket is parsed correctly.</description>
+    <category>other</category>
+    <priority>low</priority>
+    <tags/>
+    <metadata>
+      <source>api</source>
+    </metadata>
+  </ticket>
+</tickets>

@@ -1,0 +1,24 @@
+[
+  {
+    "customer_id":    "CUST-J10",
+    "customer_email": "good@example.com",
+    "customer_name":  "Good User",
+    "subject":        "Valid ticket",
+    "description":    "This description is valid and long enough.",
+    "category":       "other",
+    "priority":       "medium",
+    "tags":           [],
+    "metadata":       { "source": "api" }
+  },
+  {
+    "customer_id":    "CUST-J11",
+    "customer_email": "not-an-email",
+    "customer_name":  "Bad User",
+    "subject":        "Invalid email",
+    "description":    "This row should fail validation due to bad email.",
+    "category":       "other",
+    "priority":       "medium",
+    "tags":           [],
+    "metadata":       { "source": "api" }
+  }
+]
