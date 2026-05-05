@@ -54,6 +54,30 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 5: OpenAPI + Postman
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- `@asteasolutions/zod-to-openapi` v7 docs — `OpenAPIRegistry`, `extendZodWithOpenApi`, `OpenApiGeneratorV31`
+- Phase 1 Zod schemas (CreateTicketSchema, UpdateTicketSchema, TransitionRequestSchema, ListFiltersSchema, ImportQuerySchema)
+- Spec §3.2 (all 11 endpoint definitions, response shapes, error codes)
+- Postman collection v2.1 JSON schema for Newman-compatible format
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 5 — OpenAPI + Postman. Implement scripts/generate-openapi.ts using @asteasolutions/zod-to-openapi to generate docs/openapi.yaml from live Zod schemas. Register all 11 endpoints. Create demo/postman-collection.json with collection variables for ticketId/ticketVersion, full CRUD + transition + classify + error-case requests, 30+ Newman assertions. Validate with newman run.
+
+**Outcome:** accepted
+
+**What changed and why:**
+`scripts/generate-openapi.ts`: `extendZodWithOpenApi(z)` patches Zod to accept `.openapi()` metadata; `OpenAPIRegistry` registers 5 reusable component schemas (Ticket, ClassificationResult, Transition, ImportSummary, Error) and 11 endpoint paths. `OpenApiGeneratorV31.generateDocument()` produces an OpenAPI 3.1.0 object; serialised to YAML via `yaml` package (installed as direct dep). Output: `docs/openapi.yaml` (811 lines).
+
+`demo/postman-collection.json`: Postman collection v2.1 with 3 folders (Health, Tickets, Error cases), 15 requests, 30+ test assertions. Collection variables `ticketId` / `ticketVersion` flow from POST response through GET → PUT → transition → classify → DELETE. `If-Match` header templated as `"{{ticketVersion}}"`. Newman validated the collection parses and runs (health check passed against an existing local server).
+
+---
+
 ## Phase 4: Importers
 
 **Tool:** Claude Code (claude-sonnet-4-6)
