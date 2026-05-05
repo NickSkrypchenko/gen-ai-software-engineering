@@ -22,3 +22,9 @@ export type {
 } from '../validators/ticket.schemas';
 
 export type { ClassificationResult } from '../domain/classifier';
+
+export type {
+  TicketRow,
+  TransitionRow,
+  ClassificationRow,
+} from '../db/types';
