@@ -54,6 +54,38 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 2: Database Layer
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §2 (module map — db/schema, db/migrations, repository layer)
+- Spec §4.1 (full DB schema: column types, constraints, CHECK clauses, indexes)
+- Spec §4.2 (optimistic concurrency: version bump, SELECT FOR UPDATE)
+- Spec §4.6 (bulk import: per-row SAVEPOINTs, partial success semantics)
+- Drizzle ORM docs — `pgEnum`, `.for('update')`, `.returning()`, SQL template literals
+- Neon serverless driver docs — HTTP vs WebSocket driver transaction support
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 2 — DB layer. Implement the full Drizzle schema (src/db/schema.ts) with all columns, constraints, enums, and indexes from spec §4.1. Generate and apply migrations to both dev and test Neon branches. Implement the repository layer (ticket.repository.ts, transition.repository.ts, classification.repository.ts) with full CRUD, optimistic locking, status transitions, and bulkInsert with per-row SAVEPOINTs. Write integration tests covering every repository method. Coverage must continue to pass all thresholds.
+
+**Outcome:** accepted (with driver fix)
+
+**What changed and why:**
+Implemented `src/db/schema.ts` with three tables: `tickets` (16 columns, 3 pgEnum types, 4 indexes, 3 CHECK constraints), `ticketTransitions` (FK cascade, append-only audit log), `classifications` (FK cascade, confidence_range CHECK). Generated migration `0000_furry_wendell_vaughn.sql` via `drizzle-kit generate` and applied to both `dev` and `test` Neon branches via `drizzle-kit migrate`.
+
+Full `ticketRepository` — `create()` (with initial transition log), `findById()` (throws `NotFoundError`), `list()` (all 7 filter branches + pagination), `update()` (partial patch with optimistic lock), `delete()` (optimistic lock), `transition()` (serialisable transaction — `SELECT FOR UPDATE` + atomic audit entry), `bulkInsert()` (outer transaction + per-row SAVEPOINTs for partial success). Read-only `transitionRepository.findByTicketId()` and `classificationRepository.findByTicketId()`.
+
+**Critical fix:** The scaffold used `drizzle-orm/neon-http` (HTTP driver) which doesn't support `db.transaction()`. Switched to `drizzle-orm/neon-serverless` (WebSocket/pool driver) with `neonConfig.webSocketConstructor = ws` — the only driver that supports transactions, `SELECT FOR UPDATE`, and SAVEPOINTs in Node.js.
+
+Added `singleFork: true` to vitest pool options to prevent FK violation race conditions when multiple forks TRUNCATE and INSERT concurrently on the shared Neon test branch.
+
+31 integration tests across 4 test files; all passing. Final coverage: 98.38% stmts / 81.35% branches / 91.66% fns (all above thresholds).
+
+---
+
 ## Phase 1: Domain & Validators
 
 **Tool:** Claude Code (claude-sonnet-4-6)
