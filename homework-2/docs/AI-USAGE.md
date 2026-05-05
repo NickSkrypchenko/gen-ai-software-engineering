@@ -54,6 +54,39 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 4: Importers
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §4.6 (Importer interface — `parse(Buffer): ImporterResult`, row-level errors)
+- Spec §4.7 (fixture structure: csv/json/xml × valid/partial/malformed)
+- Spec §3.5 (ImportSummary shape — total/succeeded/failed with stage labels, auto_classified)
+- Spec §3.2 (POST /api/tickets/import — multipart, 5 MB limit, 1000 row max)
+- Phase 3 outputs — classify.service.ts, ticketRepository.bulkInsert() already implemented
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 4 — Importers. Implement csv.importer.ts (papaparse + unflattenRow + comma-split tags), json.importer.ts (root-array validation), xml.importer.ts (fast-xml-parser + isArray + unwrapTicket). Import service (parse → Zod validate → bulkInsert + optional classify). Import controller + routes (multer memoryStorage, 5 MB guard, ImportQuerySchema). Fixtures for all three formats. Unit + integration tests. Un-exclude from coverage.
+
+**Outcome:** accepted (with two bug fixes)
+
+**What changed and why:**
+`csvImporter`: `unflattenRow()` splits dot-notation keys (`metadata.source`) into nested objects — ~15 LOC, no `flat` library. Tags: comma-separated string cell split and filtered. `papaparse` with `header: true` and `skipEmptyLines: true`.
+
+`jsonImporter`: raw `JSON.parse` with `Array.isArray()` guard — whole-file failures produce a single `parseErrors` entry; per-row items passed through without validation (Zod step is downstream in service).
+
+`xmlImporter`: `fast-xml-parser` with `isArray` callback keyed on `'tickets.ticket'` and `'tickets.ticket.tags.tag'`. `unwrapTicket()` normalises tags to `string[]`; handles `<tags/>` as `''` edge case that would otherwise fail Zod. **Bug found:** empty `<tags/>` element returned as `''` — fixed by explicitly mapping to `[]`.
+
+`import.service`: parse → per-row Zod validation (collecting `stage: 'validate'` failures) → `ticketRepository.bulkInsert()` (per-row SAVEPOINTs) → optional `classifyService.autoClassify()` per inserted ticket. Returns `ImportSummary` matching spec §3.5.
+
+**Bug found:** `auto_classify` query param coercion: `validate(ImportQuerySchema)` middleware coerces `'true'` string to boolean `true` via `z.coerce.boolean()`, but controller checked `=== 'true'` (string comparison). Fixed to `=== true || === 'true'`.
+
+12 test fixtures, 18 unit tests, 10 HTTP integration tests. 212 tests total, 96.38% stmts — all thresholds pass.
+
+---
+
 ## Phase 3: HTTP Layer
 
 **Tool:** Claude Code (claude-sonnet-4-6)
