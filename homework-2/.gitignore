@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.test
+.env.production
+.env.local
+coverage/
+public/css/tailwind.css
+public/js/dist/
+.vercel/
+*.log
+.DS_Store
+docs/perf-results/*.json

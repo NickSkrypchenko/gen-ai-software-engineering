@@ -1,0 +1,18 @@
+{
+  "rules": {
+    "no-restricted-imports": ["error", {
+      "patterns": [
+        {
+          "group": [
+            "**/src/db/**",
+            "**/src/repository/**",
+            "**/src/services/**",
+            "**/src/middleware/**",
+            "**/src/utils/logger*"
+          ],
+          "message": "Frontend cannot import from backend infrastructure. Use src/domain/ or src/validators/ (type-only) only."
+        }
+      ]
+    }]
+  }
+}

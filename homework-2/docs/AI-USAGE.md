@@ -1,0 +1,53 @@
+# AI Tools — Usage Log
+
+> Living document — appended after each phase, consolidated in Phase 15.
+
+---
+
+## Context-Model-Prompt Summary Table
+
+| Phase | Surface | Context | Model | Prompt strategy |
+|---|---|---|---|---|
+| 0 | Scaffold | Spec + repo state | Sonnet 4.6 | Imperative kickoff with explicit ground rules |
+| 1 | Domain & validators | Spec §3-4 + Zod docs | Sonnet 4.6 | Phase-scoped: state machine + classifier + Zod schemas + unit tests |
+| 2 | DB layer | Spec §2,4 + Drizzle + Neon docs | Sonnet 4.6 | Phase-scoped: schema + migrations + repositories with transactions |
+| 3 | HTTP layer | Spec §3 + Phase 1-2 outputs | Sonnet 4.6 | Phase-scoped: routes/controllers/middleware + integration tests |
+| 4 | Importers | Spec §4.5-4.7 + fixtures | Sonnet 4.6 | Phase-scoped: 3 importer modules with unified interface |
+| 5 | OpenAPI + Postman | Zod schemas + zod-to-openapi docs | Sonnet 4.6 + Postman MCP | Tool orchestration |
+| 6 | CI workflow | Spec §6.6 + GHA docs | Sonnet 4.6 | Single-file output: `.github/workflows/e2e.yml` |
+| 7 | Wireframes + briefs | Spec §3-5 | Sonnet 4.6 | 4 markdown specs |
+| 8 | Frontend visual | wireframes + visual-brief | /high-end-visual-design (skill) | Skill invocation |
+| 9 | Performance | Running app + perf-brief | Sonnet 4.6 + autocannon | Tool orchestration + extract to markdown |
+| 10 | Code review | Branch diff + review-brief | /codex:review (skill) | Skill invocation |
+| 11a | ARCHITECTURE.md | Spec + final code structure | Opus 4.6 | Documentation prompt with Mermaid instructions |
+| 11b | README.md | Spec + final repo + screenshots | Sonnet 4.6 | Standard repo README prompt |
+| 11c | TESTING_GUIDE.md | Spec §6 + perf results + coverage | Sonnet 4.6 | Procedural documentation prompt |
+| 11d | API_REFERENCE.md | docs/openapi.yaml | No LLM (Redoc) | `redoc-cli build` |
+| 11e | HOWTORUN.md | Spec §8 + final scripts | Sonnet 4.6 | Cold-start runbook prompt |
+| 12 | Pre-deploy screenshots | Running app | Sonnet 4.6 + Playwright MCP | Tool orchestration |
+| 13 | Vercel deploy | Built app + spec §8 | /vercel:deploy (skill) | Skill invocation |
+| 14 | Post-deploy screenshot | Live URL | Sonnet 4.6 + Playwright MCP | Tool orchestration |
+| 15 | AI-USAGE + PR | Conversation + per-phase notes | Sonnet 4.6 | Editorial pass + PR composition |
+
+---
+
+## Phase 0: Scaffold
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- `docs/specs/2026-04-30-customer-support-api-design.md` — read end-to-end before any file creation
+- `homework-2/TASKS.md` — brief requirements overview
+- Repo top-level `README.md` — submission rules (PR to fork's main, Alexey-Popov reviewer)
+- `.env` + `.env.test` — confirmed both have Neon URLs (dev + test branches)
+- `.vercel/project.json` — confirmed Vercel project `customer-support-api` already linked
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim kickoff prompt from user):**
+> You are implementing Homework 2 — Intelligent Customer Support System as the implementation driver for this repo. [...] Step 0 — read the spec end-to-end before doing anything else. It is authoritative. [...] Once I confirm, execute Phase 0 (scaffold).
+
+**Outcome:** accepted
+
+**What changed and why:**
+Created the full project skeleton matching spec §2 (module map) and §8.1 (file tree). All production config files written: `package.json` (all deps from spec §8.2), three `tsconfig` files (base/server/web), `vitest.config.ts`, `esbuild.config.mjs`, `tailwind.config.ts`, `drizzle.config.ts`, `vercel.json`. Core source files that make the dev server functional: `src/config.ts`, `src/utils/{logger,clock,http-errors}.ts`, `src/middleware/{request-id,error-handler}.ts`, `src/routes/health.routes.ts`, `src/app.ts`, `src/index.ts`, `api/index.ts`. All other `src/` files are typed stubs that will be filled in Phases 1-4. Domain files (`ticket.ts`, `classifier.ts`, `classifier-rules.ts`, `ticket-state-machine.ts`) contain their full implementation since they're pure functions needed by Phase 1 unit tests. One deliberate spec deviation: `"start"` script uses `node dist/src/index.js` instead of spec's `node dist/index.js` because `tsconfig.server.json` has `rootDir: "."` (to include both `src/` and `api/`), which places compiled output at `dist/src/index.js`.
