@@ -54,6 +54,41 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 3: HTTP Layer
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §3.2 (all 9 endpoints, request/response shapes, status codes)
+- Spec §3.3 (optimistic concurrency — If-Match / ETag contract, 428/412 error codes)
+- Spec §3.4 (state machine transitions via service → domain → repository chain)
+- Spec §4.3 (auto-classify: same transaction semantics for classify + ticket update)
+- Phase 1/2 outputs — validators, domain functions, repository already implemented
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 3 — HTTP layer. Implement validate.ts (generic Zod middleware), etag.ts (parseIfMatch + setETag), classify.service.ts (autoClassify in one transaction), tickets.service.ts (full orchestration), tickets.controller.ts (thin HTTP adapter), tickets.routes.ts (all 9 routes). Write integration tests using supertest covering every endpoint and all error paths (400/404/412/422/428). Un-exclude Phase 3 files from coverage config.
+
+**Outcome:** accepted
+
+**What changed and why:**
+`validate.ts`: generic middleware that calls `schema.safeParse(req[target])`, maps Zod issues to `{ field, message }` and throws `ValidationError(400)`. Uses double-cast (`unknown → Record<string, unknown>`) to satisfy TypeScript's narrowing on `Request`.
+
+`etag.ts`: `parseIfMatch` extracts the version integer from `If-Match: "N"` header (strips quotes), throws `PreconditionRequiredError(428)` if missing or malformed; attaches as `req.expectedVersion`. `setETag` writes `ETag: "N"` header on GET responses.
+
+`classify.service.ts`: single `db.transaction()` — `SELECT FOR UPDATE` (lock + version check), `classify()` domain call, `INSERT INTO classifications`, `UPDATE tickets SET category/priority/version+1`. Returns `{ classification, ticket }`. Version conflict throws `VersionConflictError(412)`.
+
+`tickets.service.ts`: thin orchestration. `transition()` calls `domainTransition()` first (throws `InvalidTransitionError(422)` if illegal, computes `resolved_at`), then `ticketRepository.transition()`. `create()` calls repository then optionally `classifyService.autoClassify()` when `auto_classify=true` query param present.
+
+`tickets.controller.ts`: one try/catch per handler; accesses `req.expectedVersion` via type cast helper `ifMatchVersion(req)`. All mutating handlers use `setETag(res, ticket.version)` on success.
+
+`tickets.routes.ts`: 9 routes registered with inline `validate()` and `parseIfMatch` middleware composition.
+
+21 supertest integration tests covering full request/response cycle; all 184 tests pass. Coverage: 98.49% stmts / 81.5% branches / 95.16% fns — all above thresholds.
+
+---
+
 ## Phase 2: Database Layer
 
 **Tool:** Claude Code (claude-sonnet-4-6)
