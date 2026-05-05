@@ -54,6 +54,27 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 6: CI Workflow
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §6.6 (CI steps: Postgres service container, migrate, vitest, seed, start, wait-on, Newman)
+- GitHub Actions docs — `services.postgres`, `wait-on`, artifact uploads
+- Repo structure — workflow must be at `.github/workflows/` from git root; `homework-2/` is a sub-directory
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Phase 6 — CI workflow. Write `.github/workflows/e2e.yml` per spec §6.6: Postgres 15 service container, npm ci, db:migrate, vitest --coverage, db:seed, build + start server in background, wait-on health, Newman e2e with htmlextra reporter, artifact uploads.
+
+**Outcome:** accepted
+
+**What changed and why:**
+`homework-2/.github/workflows/e2e.yml` (local reference) + `/.github/workflows/homework-2-e2e.yml` (repo-root copy, the one GitHub Actions recognises). `defaults.run.working-directory: homework-2` scopes all `run` steps to the sub-directory. Path filters (`homework-2/**`) prevent CI from triggering on unrelated changes. Newman's `--timeout-request 10000` guards against slow Neon cold starts in CI. The `|| true` after Newman prevents a premature failure blocking artifact upload — failures are surfaced via the artifact report. `newman-htmlextra` reporter used (richer HTML than the default `html` reporter).
+
+---
+
 ## Phase 5: OpenAPI + Postman
 
 **Tool:** Claude Code (claude-sonnet-4-6)
