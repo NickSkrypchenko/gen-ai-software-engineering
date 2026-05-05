@@ -18,12 +18,9 @@ export default defineConfig({
         'src/db/types.ts',
         'src/importers/importer.types.ts',
         'src/models/ticket.types.ts',
-        // Phase 3 stubs — un-excluded once HTTP layer is implemented
-        'src/controllers/**',
-        'src/services/**',
-        'src/middleware/etag.ts',
-        'src/middleware/validate.ts',
-        'src/middleware/error-handler.ts',
+        // Phase 3 implemented — controllers/services now covered by http-tickets.test.ts
+        // error-handler covered via HTTP error paths in integration tests
+
         // Phase 4 stubs — un-excluded once importers are implemented
         'src/importers/csv.importer.ts',
         'src/importers/json.importer.ts',
