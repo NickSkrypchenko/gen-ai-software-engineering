@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import { importService } from '../services/import.service';
 import { ParseError, PayloadTooLargeError } from '../utils/http-errors';
 import type { ImportFormat } from '../importers/importer.types';
+import type { ImportQuery } from '../validators/import.schemas';
 
 export const importController = {
   async importFile(req: Request, res: Response, next: NextFunction) {
@@ -9,9 +10,7 @@ export const importController = {
       const file = (req as Request & { file?: Express.Multer.File }).file;
       if (!file) return next(new ParseError('No file uploaded'));
 
-      const format       = req.query.format as ImportFormat;
-      // validate middleware coerces auto_classify to boolean via ImportQuerySchema
-      const autoClassify = req.query.auto_classify === 'true';
+      const { format, auto_classify: autoClassify } = req.query as unknown as ImportQuery;
 
       try {
         const summary = await importService.importFile(file.buffer, format, autoClassify);

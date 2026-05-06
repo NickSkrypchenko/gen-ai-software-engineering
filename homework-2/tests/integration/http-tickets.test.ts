@@ -180,10 +180,11 @@ describe('POST /api/tickets/:id/auto-classify', () => {
     const res = await request(app).post(`/api/tickets/${id}/auto-classify`)
       .set('If-Match', '"1"');
     expect(res.status).toBe(200);
-    expect(res.body.category).toBeDefined();
-    expect(res.body.priority).toBeDefined();
-    expect(res.body.confidence).toBeGreaterThan(0);
-    expect(res.body.matched_keywords).toBeInstanceOf(Array);
+    expect(res.body.ticket).toBeDefined();
+    expect(res.body.classification.category).toBeDefined();
+    expect(res.body.classification.priority).toBeDefined();
+    expect(res.body.classification.confidence).toBeGreaterThan(0);
+    expect(res.body.classification.matched_keywords).toBeInstanceOf(Array);
   });
 
   test('returns 428 without If-Match', async () => {
