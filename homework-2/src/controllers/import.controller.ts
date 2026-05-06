@@ -11,7 +11,7 @@ export const importController = {
 
       const format       = req.query.format as ImportFormat;
       // validate middleware coerces auto_classify to boolean via ImportQuerySchema
-      const autoClassify = req.query.auto_classify === true || req.query.auto_classify === 'true';
+      const autoClassify = req.query.auto_classify === 'true';
 
       try {
         const summary = await importService.importFile(file.buffer, format, autoClassify);

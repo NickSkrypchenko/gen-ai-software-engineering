@@ -5,8 +5,8 @@ dist/
 .env.production
 .env.local
 coverage/
-public/css/tailwind.css
-public/js/dist/
+# public/css/tailwind.css  — committed for Vercel static deploy
+# public/js/dist/          — committed for Vercel static deploy
 .vercel/
 *.log
 .DS_Store
