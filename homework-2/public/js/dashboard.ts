@@ -80,17 +80,22 @@ async function loadTickets(page = 0): Promise<void> {
 
     const tbody = document.getElementById('ticket-tbody')!;
     const mobileList = document.getElementById('mobile-list')!;
-    const emptyRow = document.getElementById('table-empty-row')!;
+    // Re-query each time — emptyRow is removed from DOM when tbody.innerHTML is replaced
+    let emptyRow = document.getElementById('table-empty-row');
     const summary = document.getElementById('table-summary')!;
 
     if (!res.data.length) {
+      if (!emptyRow) {
+        emptyRow = document.createElement('tr');
+        emptyRow.id = 'table-empty-row';
+        emptyRow.innerHTML = '<td colspan="7" class="text-center py-16 text-[var(--muted)]">No tickets match the current filters.</td>';
+      }
       tbody.innerHTML = '';
       tbody.appendChild(emptyRow);
-      emptyRow.classList.remove('hidden');
       mobileList.innerHTML = '<p class="p-4 text-sm text-[var(--muted)]">No tickets match the current filters.</p>';
       summary.textContent = '0 tickets';
     } else {
-      emptyRow.classList.add('hidden');
+      if (emptyRow) emptyRow.classList.add('hidden');
       tbody.innerHTML = res.data.map(buildRow).join('');
       mobileList.innerHTML = res.data.map(buildMobileCard).join('');
       const start = page * LIMIT + 1;

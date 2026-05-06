@@ -17,8 +17,11 @@ const TRANSITION_LABELS: Record<string, string> = {
   closed:           '✗ Close',
 };
 
-function fmt(dateStr: string): string {
-  return new Date(dateStr).toLocaleString(undefined, {
+function fmt(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
@@ -175,7 +178,7 @@ export class TicketModal {
         | { kind: 'classification'; time: number; data: Classification };
 
       const entries: Entry[] = [
-        ...transitions.map(t => ({ kind: 'transition' as const, time: new Date(t.transitioned_at).getTime(), data: t })),
+        ...transitions.map(t => ({ kind: 'transition' as const, time: t.transitioned_at ? new Date(t.transitioned_at).getTime() : 0, data: t })),
         ...classifications.map(c => ({ kind: 'classification' as const, time: new Date(c.classified_at).getTime(), data: c })),
       ].sort((a, b) => a.time - b.time);
 
@@ -202,8 +205,9 @@ export class TicketModal {
                   <time class="text-[10px] text-[var(--muted)] font-mono">${fmt(t.transitioned_at)}</time>
                 </div>
                 <p class="text-xs text-[var(--muted)]">
-                  Transition: <span class="text-[var(--text)]">${t.from_status}</span>
-                  → <span class="text-[var(--text)]">${t.to_status}</span>
+                  ${t.from_status
+                    ? `Transition: <span class="text-[var(--text)]">${t.from_status}</span> → <span class="text-[var(--text)]">${t.to_status}</span>`
+                    : `Created · status: <span class="text-[var(--text)]">${t.to_status}</span>`}
                 </p>
                 ${t.reason ? `<p class="text-xs text-[var(--muted)] italic mt-0.5">"${t.reason}"</p>` : ''}
               </div>
