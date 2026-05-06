@@ -10,4 +10,4 @@ public/js/dist/
 .vercel/
 *.log
 .DS_Store
-docs/perf-results/*.json
+# docs/perf-results/*.json  — committed as Phase 9 evidence
