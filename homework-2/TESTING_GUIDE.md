@@ -1,5 +1,18 @@
 # Testing Guide — Customer Support API
 
+## Test pyramid
+
+```mermaid
+graph BT
+    A["Unit tests<br/>132 tests · no DB<br/>src/domain + src/validators"]
+    B["Integration tests<br/>68 tests · Neon test branch<br/>supertest + repositories"]
+    C["E2E tests<br/>Newman · Postman collection<br/>live server + DB"]
+    A --> B --> C
+    style A fill:#1e3a5f,color:#e2e8f0,stroke:#3b82f6
+    style B fill:#1a3a2a,color:#e2e8f0,stroke:#22c55e
+    style C fill:#3a1a1a,color:#e2e8f0,stroke:#ef4444
+```
+
 ## Test layers
 
 | Layer | Command | Coverage target |
