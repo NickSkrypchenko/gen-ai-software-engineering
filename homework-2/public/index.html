@@ -3,17 +3,318 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Customer Support API</title>
-  <link rel="stylesheet" href="/css/tailwind.css" />
+  <title>Customer Support API — Intelligent Ticket System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{fontFamily:{sans:['"Plus Jakarta Sans"','system-ui','sans-serif'],mono:['"JetBrains Mono"','monospace']}}}}</script>
+  <link rel="stylesheet" href="/css/custom.css" />
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center">
-  <div class="text-center">
-    <h1 class="text-4xl font-bold mb-4">Customer Support API</h1>
-    <p class="text-gray-400 mb-8">Intelligent ticket management — Phase 8 visual design pending</p>
-    <a href="/dashboard" class="px-6 py-3 bg-blue-600 rounded-lg hover:bg-blue-700 transition">
-      Open Dashboard →
+<body class="bg-mesh">
+
+<!-- Floating Nav -->
+<nav class="nav-island" aria-label="Site navigation">
+  <div class="flex items-center gap-2 mr-4">
+    <div class="w-6 h-6 rounded-md bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="1" y="1" width="4" height="4" rx="1" fill="#60a5fa"/><rect x="7" y="1" width="4" height="4" rx="1" fill="#34d399"/><rect x="1" y="7" width="4" height="4" rx="1" fill="#f59e0b"/><rect x="7" y="7" width="4" height="4" rx="1" fill="#818cf8"/></svg>
+    </div>
+    <span class="text-sm font-semibold text-slate-100">CSA</span>
+  </div>
+  <div class="hidden md:flex items-center gap-1 mr-3">
+    <a href="#endpoints" class="text-sm text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-full transition-colors duration-200">Endpoints</a>
+    <a href="#state-machine" class="text-sm text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-full transition-colors duration-200">State Machine</a>
+    <a href="#bulk-import" class="text-sm text-slate-400 hover:text-slate-200 px-3 py-1.5 rounded-full transition-colors duration-200">Import</a>
+  </div>
+  <div class="flex items-center gap-2">
+    <span class="stats-pill" aria-live="polite">
+      <span class="stats-dot" aria-hidden="true"></span>
+      <span id="nav-count">—</span> open
+    </span>
+    <a href="/dashboard" class="btn-primary">
+      Dashboard
+      <span class="icon-wrap" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
     </a>
   </div>
-  <script type="module" src="/js/dist/index.js"></script>
+</nav>
+
+<!-- Hero -->
+<section class="pt-40 pb-28 px-6 text-center" aria-labelledby="hero-heading">
+  <div class="max-w-3xl mx-auto">
+    <div class="reveal flex justify-center mb-6">
+      <span class="eyebrow">Homework 2 · Intelligent Support System</span>
+    </div>
+    <h1 id="hero-heading" class="reveal text-5xl md:text-7xl font-bold text-slate-100 leading-[1.08] tracking-tight mb-6" style="transition-delay:80ms">
+      Customer Support
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400"> API</span>
+    </h1>
+    <p class="reveal text-lg text-slate-400 max-w-xl mx-auto mb-10 leading-relaxed" style="transition-delay:140ms">
+      Keyword-based classification · Optimistic concurrency ·
+      CSV&nbsp;/&nbsp;JSON&nbsp;/&nbsp;XML bulk import · Full audit log
+    </p>
+    <div class="reveal flex flex-wrap items-center justify-center gap-3" style="transition-delay:200ms">
+      <a href="/dashboard" class="btn-primary">
+        Open Dashboard
+        <span class="icon-wrap" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </a>
+      <a href="/health" class="btn-ghost" target="_blank" rel="noopener">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 7h2l1.5-2.5L9 9l1-2 1 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Health Check
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Endpoints -->
+<section id="endpoints" class="py-20 px-6" aria-labelledby="endpoints-heading">
+  <div class="max-w-6xl mx-auto">
+    <div class="reveal text-center mb-14">
+      <span class="eyebrow mb-4 inline-block">REST API</span>
+      <h2 id="endpoints-heading" class="text-3xl font-bold text-slate-100">9 Endpoints</h2>
+      <p class="text-slate-500 mt-2 text-sm">Every response includes <code class="font-mono text-slate-400">x-request-id</code> · Mutations require <code class="font-mono text-slate-400">If-Match: "version"</code></p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-6 gap-3" role="list">
+
+      <div class="card-shell md:col-span-3 reveal" role="listitem" style="transition-delay:60ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-post">POST</span><span class="text-xs text-slate-600 font-mono">201</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets</p>
+          <p class="text-slate-500 text-xs mb-4">Create a ticket. Optional <code class="text-slate-400">?auto_classify=true</code> runs classifier inline.</p>
+          <div class="text-xs space-y-1 mb-4">
+            <div class="flex gap-2"><span class="text-slate-600 w-36 font-mono flex-shrink-0">customer_id</span><span class="text-slate-400">string · required</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-36 font-mono flex-shrink-0">customer_email</span><span class="text-slate-400">email · required</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-36 font-mono flex-shrink-0">subject</span><span class="text-slate-400">string 1–200 chars</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-36 font-mono flex-shrink-0">description</span><span class="text-slate-400">string 10–2000 chars</span></div>
+          </div>
+          <button class="btn-sm try-toggle" data-endpoint="create" aria-expanded="false">▸ Try it</button>
+          <div class="try-it-panel mt-3" id="try-create">
+            <textarea class="input-field w-full text-xs font-mono resize-none" rows="9" id="body-create" aria-label="Request body JSON">{
+  "customer_id": "CUST-001",
+  "customer_email": "alice@example.com",
+  "customer_name": "Alice Smith",
+  "subject": "Cannot login to account",
+  "description": "My account is locked after too many failed login attempts.",
+  "category": "account_access",
+  "priority": "high",
+  "tags": ["login"],
+  "metadata": { "source": "api" }
+}</textarea>
+            <div class="flex gap-2 mt-2">
+              <button class="btn-sm send-btn" data-method="POST" data-url="/api/tickets" data-body="body-create">Send →</button>
+              <button class="btn-sm reset-btn">Reset</button>
+            </div>
+            <pre class="font-mono text-xs text-slate-400 mt-3 p-3 bg-black/30 rounded-lg overflow-x-auto min-h-[40px] response-out" aria-live="polite"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-3 reveal" role="listitem" style="transition-delay:100ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-get">GET</span><span class="text-xs text-slate-600 font-mono">200</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets</p>
+          <p class="text-slate-500 text-xs mb-4">List with filters + pagination. Returns <code class="text-slate-400">{ data[], count, page }</code>.</p>
+          <div class="text-xs space-y-1 mb-4">
+            <div class="flex gap-2"><span class="text-slate-600 w-28 font-mono flex-shrink-0">status</span><span class="text-slate-400">new | in_progress | …</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-28 font-mono flex-shrink-0">priority</span><span class="text-slate-400">urgent | high | medium | low</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-28 font-mono flex-shrink-0">q</span><span class="text-slate-400">subject full-text search</span></div>
+            <div class="flex gap-2"><span class="text-slate-600 w-28 font-mono flex-shrink-0">limit / offset</span><span class="text-slate-400">default 50 · max 200</span></div>
+          </div>
+          <button class="btn-sm try-toggle" data-endpoint="list" aria-expanded="false">▸ Try it</button>
+          <div class="try-it-panel mt-3" id="try-list">
+            <input class="input-field w-full text-xs font-mono mb-2" id="url-list" value="/api/tickets?limit=5" aria-label="Request URL"/>
+            <button class="btn-sm send-btn" data-method="GET" data-url-from="url-list">Send →</button>
+            <pre class="font-mono text-xs text-slate-400 mt-3 p-3 bg-black/30 rounded-lg overflow-x-auto min-h-[40px] response-out" aria-live="polite"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-2 reveal" role="listitem" style="transition-delay:130ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-get">GET</span><span class="text-xs text-slate-600 font-mono">200 · 404</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets/:id</p>
+          <p class="text-slate-500 text-xs mb-3">Returns ticket + sets <code class="text-slate-400">ETag: "version"</code> header.</p>
+          <button class="btn-sm try-toggle" data-endpoint="get" aria-expanded="false">▸ Try it</button>
+          <div class="try-it-panel mt-3" id="try-get">
+            <input class="input-field w-full text-xs font-mono mb-2" id="url-get" placeholder="/api/tickets/{id}" aria-label="Ticket URL"/>
+            <button class="btn-sm send-btn" data-method="GET" data-url-from="url-get">Send →</button>
+            <pre class="font-mono text-xs text-slate-400 mt-3 p-3 bg-black/30 rounded-lg overflow-x-auto min-h-[40px] response-out" aria-live="polite"></pre>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-2 reveal" role="listitem" style="transition-delay:160ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-put">PUT</span><span class="text-xs text-slate-600 font-mono">200 · 412 · 428</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets/:id</p>
+          <p class="text-slate-500 text-xs mb-3">Partial update without status. Requires <code class="text-slate-400">If-Match</code>. Bumps version.</p>
+          <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-amber-500/60" aria-hidden="true"></div><span class="text-xs text-amber-500/80">Optimistic concurrency</span></div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-2 reveal" role="listitem" style="transition-delay:190ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-delete">DELETE</span><span class="text-xs text-slate-600 font-mono">204 · 412 · 428</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets/:id</p>
+          <p class="text-slate-500 text-xs mb-3">Cascade delete transitions &amp; classifications. Requires <code class="text-slate-400">If-Match</code>.</p>
+          <div class="flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-red-500/60" aria-hidden="true"></div><span class="text-xs text-red-500/80">Irreversible</span></div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-3 reveal" role="listitem" style="transition-delay:220ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-post">POST</span><span class="text-xs text-slate-600 font-mono">200 · 422 · 412</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets/:id/transitions</p>
+          <p class="text-slate-500 text-xs mb-3">Guard-railed FSM. Body: <code class="text-slate-400">{ to, reason? }</code>. Returns <code class="text-slate-400">422</code> for illegal moves.</p>
+          <div class="text-xs text-slate-600 font-mono leading-relaxed">new → in_progress<br/>in_progress → waiting_customer | resolved<br/>resolved → in_progress | closed</div>
+        </div>
+      </div>
+
+      <div class="card-shell md:col-span-3 reveal" role="listitem" style="transition-delay:250ms">
+        <div class="card-core p-5">
+          <div class="flex items-start justify-between mb-3"><span class="method-pill pill-post">POST</span><span class="text-xs text-slate-600 font-mono">200 · 412</span></div>
+          <p class="font-mono text-slate-300 text-sm mb-1">/api/tickets/:id/auto-classify</p>
+          <p class="text-slate-500 text-xs mb-3">Keyword rules engine updates <code class="text-slate-400">category + priority</code> atomically. Returns <code class="text-slate-400">ClassificationResult</code>.</p>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-mono">bug_report</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-mono">account_access</span>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-mono">billing_question</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- State Machine -->
+<section id="state-machine" class="py-20 px-6" aria-labelledby="fsm-heading">
+  <div class="max-w-4xl mx-auto">
+    <div class="reveal text-center mb-12">
+      <span class="eyebrow mb-4 inline-block">Ticket lifecycle</span>
+      <h2 id="fsm-heading" class="text-3xl font-bold text-slate-100">Status State Machine</h2>
+      <p class="text-slate-500 mt-2 text-sm">Illegal transitions return <code class="font-mono text-slate-400">422 INVALID_TRANSITION</code> with <code class="font-mono text-slate-400">allowed[]</code></p>
+    </div>
+    <div class="card-shell reveal">
+      <div class="card-core p-6 md:p-10 overflow-x-auto">
+        <svg viewBox="0 0 700 220" width="100%" height="auto" role="img" aria-label="Ticket status state machine: new → in_progress → waiting_customer or resolved → closed">
+          <defs>
+            <marker id="arr" markerWidth="7" markerHeight="6" refX="6" refY="3" orient="auto"><polygon points="0 0,7 3,0 6" fill="#475569"/></marker>
+          </defs>
+          <rect class="fsm-node" x="10"  y="85" width="90"  height="44" rx="10"/>
+          <text class="fsm-node-label" x="55"  y="109" text-anchor="middle">new</text>
+
+          <rect class="fsm-node" x="150" y="85" width="115" height="44" rx="10"/>
+          <text class="fsm-node-label" x="207" y="109" text-anchor="middle">in_progress</text>
+
+          <rect class="fsm-node" x="320" y="22" width="118" height="44" rx="10"/>
+          <text class="fsm-node-label" x="379" y="40"  text-anchor="middle">waiting_</text>
+          <text class="fsm-node-label" x="379" y="55"  text-anchor="middle">customer</text>
+
+          <rect class="fsm-node" x="320" y="148" width="100" height="44" rx="10"/>
+          <text class="fsm-node-label" x="370" y="172" text-anchor="middle">resolved</text>
+          <text style="font-size:9px;fill:#34d399;font-family:'Plus Jakarta Sans',sans-serif" x="370" y="185" text-anchor="middle">sets resolved_at</text>
+
+          <rect class="fsm-node" x="475" y="148" width="80"  height="44" rx="10"/>
+          <text class="fsm-node-label" x="515" y="172" text-anchor="middle">closed</text>
+          <text style="font-size:9px;fill:#475569;font-family:'Plus Jakarta Sans',sans-serif" x="515" y="185" text-anchor="middle">terminal</text>
+
+          <path class="fsm-arrow" d="M100 107 L150 107" marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M265 97  Q293 55 320 46"  marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M320 58  Q290 80 265 105" marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M265 117 Q292 162 320 165" marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M370 148 Q355 122 265 115" marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M420 170 L475 170" marker-end="url(#arr)"/>
+          <path class="fsm-arrow" d="M475 158 Q447 138 422 160" marker-end="url(#arr)"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Bulk Import -->
+<section id="bulk-import" class="py-20 px-6" aria-labelledby="import-heading">
+  <div class="max-w-4xl mx-auto">
+    <div class="reveal text-center mb-12">
+      <span class="eyebrow mb-4 inline-block">Bulk operations</span>
+      <h2 id="import-heading" class="text-3xl font-bold text-slate-100">Import Tickets</h2>
+      <p class="text-slate-500 mt-2 text-sm">Max 5 MB · 1,000 rows · Partial success via per-row SAVEPOINTs</p>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+      <div class="card-shell reveal" style="transition-delay:60ms"><div class="card-core p-5">
+        <div class="flex items-center gap-2 mb-3"><span class="method-pill pill-post" style="font-size:10px">CSV</span><span class="text-xs text-slate-500">dot-notation headers</span></div>
+        <pre class="font-mono text-xs text-slate-500 leading-relaxed">curl -X POST \
+"/api/tickets/import
+  ?format=csv" \
+-F "file=@tickets.csv"</pre>
+      </div></div>
+      <div class="card-shell reveal" style="transition-delay:100ms"><div class="card-core p-5">
+        <div class="flex items-center gap-2 mb-3"><span class="method-pill pill-post" style="font-size:10px">JSON</span><span class="text-xs text-slate-500">root array</span></div>
+        <pre class="font-mono text-xs text-slate-500 leading-relaxed">curl -X POST \
+"/api/tickets/import
+  ?format=json" \
+-F "file=@tickets.json"</pre>
+      </div></div>
+      <div class="card-shell reveal" style="transition-delay:140ms"><div class="card-core p-5">
+        <div class="flex items-center gap-2 mb-3"><span class="method-pill pill-post" style="font-size:10px">XML</span><span class="text-xs text-slate-500">&lt;tickets&gt; root</span></div>
+        <pre class="font-mono text-xs text-slate-500 leading-relaxed">curl -X POST \
+"/api/tickets/import
+  ?format=xml" \
+-F "file=@tickets.xml"</pre>
+      </div></div>
+    </div>
+    <div class="reveal text-center">
+      <a href="/dashboard" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M7 2v7M4 6l3 3 3-3M2 10v1.5A.5.5 0 002.5 12h9a.5.5 0 00.5-.5V10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Open Dashboard to import files
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 9L9 3M9 3H5M9 3v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="border-t border-white/5 py-10 px-6 text-center">
+  <p class="text-slate-600 text-sm">Customer Support API · Homework 2 · Nick Skrypchenko · MIT License</p>
+  <p class="text-slate-700 text-xs mt-1 font-mono">212 tests · 96% coverage · Node.js + Express + Neon Postgres</p>
+</footer>
+
+<script type="module" src="/js/dist/index.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  // Scroll reveal
+  const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }), { threshold: 0.08 });
+  document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+  // Try-it toggles
+  document.querySelectorAll('.try-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const panel = document.getElementById('try-' + btn.dataset.endpoint);
+      const open = panel?.classList.toggle('open');
+      btn.textContent = open ? '▾ Close' : '▸ Try it';
+      btn.setAttribute('aria-expanded', String(!!open));
+    });
+  });
+
+  // Send buttons
+  document.querySelectorAll('.send-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const method = btn.dataset.method;
+      const url = btn.dataset.urlFrom ? document.getElementById(btn.dataset.urlFrom)?.value : btn.dataset.url;
+      const resEl = btn.closest('.try-it-panel')?.querySelector('.response-out');
+      if (!url || !resEl) return;
+      btn.textContent = '…';
+      try {
+        const opts = { method, headers: {} };
+        if (btn.dataset.body) { opts.headers['Content-Type'] = 'application/json'; opts.body = document.getElementById(btn.dataset.body)?.value; }
+        const r = await fetch(url, opts);
+        const t = await r.text();
+        try { resEl.textContent = JSON.stringify(JSON.parse(t), null, 2); } catch { resEl.textContent = t; }
+      } catch(e) { resEl.textContent = 'Error: ' + e.message; }
+      finally { btn.textContent = 'Send →'; }
+    });
+  });
+
+  // Live count
+  fetch('/api/tickets?status=new&limit=1').then(r => r.json()).then(d => {
+    const el = document.getElementById('nav-count'); if (el && d.count !== undefined) el.textContent = d.count;
+  }).catch(() => {});
+});
+</script>
 </body>
 </html>

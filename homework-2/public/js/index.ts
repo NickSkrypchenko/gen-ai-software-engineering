@@ -1,2 +1,2 @@
-// Landing page entry — visual implementation in Phase 8
-console.log('[CSA] Landing page loaded');
+// Landing page entry — boots landing.ts
+import './landing.js';

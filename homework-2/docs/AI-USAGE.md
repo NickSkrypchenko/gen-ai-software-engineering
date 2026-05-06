@@ -84,6 +84,50 @@ Created the full project skeleton matching spec §2 (module map) and §8.1 (file
 
 ---
 
+## Phase 8: Frontend Visual
+
+**Tool:** Claude Code (claude-sonnet-4-6) + `/high-end-visual-design` skill
+
+**Context loaded:**
+- `docs/specs/wireframes.md` — ASCII-art layouts, component specs, responsive rules
+- `docs/specs/visual-brief.md` — dark palette, typography, all Tailwind class specs for every component
+- Backend API contract (Phase 3 endpoints, ETag/If-Match contract, ImportSummary shape)
+- `/high-end-visual-design` skill — Ethereal Glass vibe, double-bezel card architecture, custom cubic-bezier transitions, Plus Jakarta Sans font
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Build the full frontend for the Customer Support API project. [...] PAGES TO BUILD: public/index.html, public/dashboard.html. BACKEND CONTRACT (already implemented). REQUIRED FILES: public/css/custom.css, public/js/api-client.ts, public/js/landing.ts, public/js/dashboard.ts, public/js/import-dropzone.ts, public/js/components/ticket-modal.ts, public/js/components/status-badge.ts, public/js/components/classification-badge.ts. BRAND: Dark theme. Operator tooling aesthetic — Linear/Height/Plane.so.
+
+**Outcome:** accepted (with one bug fix)
+
+**What changed and why:**
+`public/css/custom.css`: Full CSS design system — CSS variables (`--bg: #050505`), fixed grain overlay, bg-mesh radial gradients, Plus Jakarta Sans + JetBrains Mono via Google Fonts, double-bezel `.card-shell`/`.card-core` components, method pills (GET/POST/PUT/DELETE), status/priority badge system, `.btn-primary` with button-in-button icon pattern, floating `.nav-island` (glassmorphism, `backdrop-filter: blur(20px)`), stats pill with pulse animation, tickets table, input/select fields, slide-in modal panel, 5-state dropzone, try-it panels, confidence bar, history timeline, scroll reveal, spinner, pagination buttons.
+
+`public/index.html`: Floating nav island with live open-ticket count, hero with eyebrow + gradient heading + CTA pair, 9 endpoint cards in asymmetric 6-column bento grid (col-span-3+3 / 2+2+2 / 3+3), state-machine SVG (5 nodes + directed arrows with arrowhead marker), bulk import section with 3-tab curl examples. Inline JS for scroll reveal (IntersectionObserver), try-it toggle panels, send buttons, live count fetch.
+
+`public/dashboard.html`: Full operator dashboard — floating nav with live count, "Operator View" eyebrow header + "New ticket" CTA, filter bar (5 controls: status/category/priority/assigned/search + apply/clear), tickets table (desktop) + mobile card list, pagination with page-range buttons, collapsible bulk import section with dropzone + format/auto-classify controls. Two modals: create-ticket form (all required fields, metadata.source hidden) and ticket-detail panel (3-tab: Details/Status/History with transition buttons + history timeline).
+
+`public/js/api-client.ts`: ETag-aware fetch wrapper. Per-ticket version cache (`Map<string, number>`). `extractETag()` parses `ETag: "N"` header. Auto-retry on 412: re-fetches ticket to get fresh version, then retries mutation once. All 9 API endpoints covered. `importTickets()` sends multipart/form-data (no JSON Content-Type override).
+
+`public/js/components/status-badge.ts`: `renderStatusBadge()` / `renderPriorityBadge()` — inline HTML strings with correct CSS classes from visual-brief. Dot indicator (○●◐✓—) + label.
+
+`public/js/components/classification-badge.ts`: Renders confidence bar, category label, priority, keyword chips. `confidenceColor()` maps ≥0.9 → emerald, ≥0.7 → blue, else slate. `renderLatestClassification()` picks most recent by `classified_at`.
+
+`public/js/components/ticket-modal.ts`: 3-tab modal (Details/Status/History). `ALLOWED_TRANSITIONS` map drives transition button rendering. History tab fetches transitions + classifications in parallel, merges and sorts by timestamp, renders mixed timeline. Auto-classify button calls `apiClient.autoClassify()` and re-populates modal. Edit assigned-to inline. Delete with confirmation dialog. Keyboard: Escape closes.
+
+`public/js/import-dropzone.ts`: 5-state machine (idle/hover/uploading/success/error). Progress bar via `setInterval` fake-progress (capped at 85% until real response). Drag events + file picker + keyboard. Custom toggle checkbox UI. `onComplete` callback triggers table reload.
+
+`public/js/dashboard.ts`: Table rendering with `buildRow()` / `buildMobileCard()`. Filter form → `collectFilters()` → `loadTickets(page)`. Pagination with page-range calculation. Create-ticket modal form (reads all fields, posts to API). Row click → `apiClient.getTicket(id)` → `modal.open()`. `onUpdated` / `onDeleted` callbacks reload table. Scroll reveal with IntersectionObserver.
+
+`public/js/landing.ts`: Live open-count fetch. Try-it panel toggle + JSON send. Curl tab switcher. State-machine SVG hover/focus descriptions (ARIA labels). Mobile hamburger overlay. Scroll reveal.
+
+**Bug found and fixed:** `TicketModal.open()` added `open` class only to the backdrop element but not to the modal panel. CSS `.modal-panel.open { transform: translateX(0) }` requires the class on the panel itself. Fixed by adding `this.panel.classList.add('open')` / `remove('open')` symmetrically. Same fix applied to the create-ticket panel in `dashboard.ts`.
+
+**Screenshots:** `docs/screenshots/landing-full.png`, `docs/screenshots/dashboard-full.png`, `docs/screenshots/dashboard-modal.png`.
+
+---
+
 ## Phase 6: CI Workflow
 
 **Tool:** Claude Code (claude-sonnet-4-6)

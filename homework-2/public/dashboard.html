@@ -3,15 +3,450 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard — Customer Support</title>
-  <link rel="stylesheet" href="/css/tailwind.css" />
+  <title>Dashboard — Customer Support API</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/custom.css" />
 </head>
-<body class="bg-gray-950 text-gray-100 min-h-screen flex items-center justify-center">
-  <div class="text-center">
-    <h1 class="text-4xl font-bold mb-4">Operator Dashboard</h1>
-    <p class="text-gray-400 mb-8">Phase 8 visual design pending</p>
-    <a href="/" class="text-blue-400 hover:underline">← Back to API docs</a>
+<body class="bg-mesh min-h-[100dvh]">
+
+  <!-- Nav island -->
+  <nav class="nav-island" role="navigation" aria-label="Main navigation">
+    <a href="/" class="flex items-center gap-2 text-sm font-medium text-[var(--muted)] hover:text-[var(--text)] transition-colors duration-200" aria-label="Back to API docs">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M8 2L3 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      API Docs
+    </a>
+    <span class="w-px h-4 bg-[var(--border-hi)]" aria-hidden="true"></span>
+    <span class="text-sm font-semibold text-[var(--text)]">Dashboard</span>
+    <div class="stats-pill ml-2" aria-live="polite" aria-label="Open tickets count">
+      <span class="stats-dot" aria-hidden="true"></span>
+      <span id="nav-open-count">— open</span>
+    </div>
+  </nav>
+
+  <!-- Page content -->
+  <main class="pt-24 pb-20 px-4 md:px-8 max-w-[1400px] mx-auto">
+
+    <!-- Page header -->
+    <header class="mb-8 reveal">
+      <div class="eyebrow mb-3">Operator View</div>
+      <div class="flex items-center justify-between flex-wrap gap-4">
+        <h1 class="text-3xl font-bold tracking-tight">Support Tickets</h1>
+        <button
+          id="btn-new-ticket"
+          class="btn-primary"
+          type="button"
+          aria-label="Create new ticket"
+        >
+          New ticket
+          <span class="icon-wrap" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Filter bar -->
+    <section class="card-shell mb-6 reveal" aria-label="Ticket filters">
+      <div class="card-core p-4">
+        <form id="filter-form" class="flex flex-wrap gap-3 items-center" role="search" aria-label="Filter tickets">
+          <select id="filter-status" class="select-field" aria-label="Filter by status">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="in_progress">In progress</option>
+            <option value="waiting_customer">Waiting customer</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+
+          <select id="filter-category" class="select-field" aria-label="Filter by category">
+            <option value="">All categories</option>
+            <option value="account_access">Account access</option>
+            <option value="technical_issue">Technical issue</option>
+            <option value="billing_question">Billing question</option>
+            <option value="feature_request">Feature request</option>
+            <option value="bug_report">Bug report</option>
+            <option value="other">Other</option>
+          </select>
+
+          <select id="filter-priority" class="select-field" aria-label="Filter by priority">
+            <option value="">All priorities</option>
+            <option value="urgent">Urgent</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+
+          <input
+            id="filter-assigned"
+            class="input-field"
+            type="text"
+            placeholder="Assigned to…"
+            aria-label="Filter by assigned agent"
+          />
+
+          <label class="flex items-center gap-2 text-sm cursor-pointer select-none" for="filter-search">
+            <svg class="text-[var(--muted)] flex-shrink-0" width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M9.5 9.5L12.5 12.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+          </label>
+          <input
+            id="filter-search"
+            class="input-field flex-1 min-w-[180px]"
+            type="search"
+            placeholder="Search tickets…"
+            aria-label="Search tickets by subject or description"
+          />
+
+          <button type="submit" class="btn-sm" aria-label="Apply filters">Apply</button>
+          <button type="button" id="btn-clear-filters" class="btn-sm" aria-label="Clear all filters">Clear</button>
+        </form>
+        <div id="active-filters" class="mt-2 text-xs text-[var(--muted)] hidden" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- Tickets table -->
+    <section class="card-shell mb-6 reveal" aria-label="Tickets list">
+      <div class="card-core">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+          <span id="table-summary" class="text-sm text-[var(--muted)]" aria-live="polite">Loading…</span>
+          <div id="table-loading" class="spinner hidden" role="status" aria-label="Loading tickets"></div>
+        </div>
+
+        <!-- Desktop table -->
+        <div class="overflow-x-auto hidden md:block">
+          <table class="tbl" role="grid" aria-label="Support tickets table">
+            <thead>
+              <tr>
+                <th scope="col">ID</th>
+                <th scope="col">Customer</th>
+                <th scope="col">Subject</th>
+                <th scope="col">Category</th>
+                <th scope="col">Status</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Created</th>
+              </tr>
+            </thead>
+            <tbody id="ticket-tbody" aria-label="Ticket rows">
+              <tr id="table-empty-row" class="hidden">
+                <td colspan="7" class="text-center py-16 text-[var(--muted)]">No tickets match the current filters.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Mobile card list -->
+        <div id="mobile-list" class="md:hidden divide-y divide-[var(--border)]" aria-label="Ticket cards"></div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
+          <div class="flex items-center gap-1" role="navigation" aria-label="Pagination">
+            <button id="btn-prev" class="page-btn" aria-label="Previous page" disabled>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M8 2L4 7l4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <div id="page-btns" class="flex items-center gap-1" role="group" aria-label="Page numbers"></div>
+            <button id="btn-next" class="page-btn" aria-label="Next page">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><path d="M6 2l4 5-4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </div>
+          <div id="page-info" class="text-xs text-[var(--muted)] tabular-nums" aria-live="polite"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Import dropzone (collapsible) -->
+    <section class="card-shell reveal" aria-label="Bulk import">
+      <div class="card-core">
+        <button
+          id="btn-toggle-import"
+          class="flex items-center justify-between w-full px-5 py-4 text-left"
+          aria-expanded="false"
+          aria-controls="import-section"
+        >
+          <span class="flex items-center gap-3">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M8 1v9M4 7l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M2 12h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+            <span class="font-semibold text-sm">Bulk Import</span>
+            <span class="text-xs text-[var(--muted)]">CSV · JSON · XML · up to 5 MB / 1,000 rows</span>
+          </span>
+          <svg id="import-chevron" width="14" height="14" viewBox="0 0 14 14" fill="none" class="text-[var(--muted)] transition-transform duration-300" aria-hidden="true">
+            <path d="M2 5l5 5 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div id="import-section" class="hidden px-5 pb-6" role="region" aria-label="Import dropzone">
+          <!-- Controls row -->
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <label for="import-format" class="text-sm text-[var(--muted)]">Format</label>
+            <select id="import-format" class="select-field" aria-label="Import file format">
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+              <option value="xml">XML</option>
+            </select>
+            <label class="flex items-center gap-2 text-sm cursor-pointer select-none">
+              <input id="import-autoclassify" type="checkbox" class="sr-only" aria-label="Auto-classify imported tickets" />
+              <span id="import-checkbox-ui" class="w-9 h-5 rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] relative cursor-pointer transition-colors duration-200 flex items-center" role="checkbox" aria-checked="false" tabindex="0">
+                <span class="w-3.5 h-3.5 rounded-full bg-[var(--muted)] absolute left-0.5 transition-transform duration-200"></span>
+              </span>
+              Auto-classify
+            </label>
+          </div>
+
+          <!-- Dropzone -->
+          <div
+            id="import-dropzone"
+            class="dropzone"
+            tabindex="0"
+            role="button"
+            aria-label="Drop CSV, JSON, or XML file here to import, or press Enter to browse"
+          >
+            <input id="file-input" type="file" class="sr-only" accept=".csv,.json,.xml" aria-label="Choose file to import" />
+
+            <!-- Idle state -->
+            <div id="dz-idle" class="flex flex-col items-center gap-3">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M16 6v14M10 14l6-8 6 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 24h20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity="0.4"/>
+              </svg>
+              <p class="text-sm font-medium text-[var(--text)]">Drop file here or <span class="text-[var(--blue)] underline cursor-pointer">browse</span></p>
+              <p class="text-xs text-[var(--muted)]">Max 5 MB · 1,000 rows</p>
+            </div>
+
+            <!-- Hover state -->
+            <div id="dz-hover" class="hidden flex-col items-center gap-3">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M16 6v14M10 14l6-8 6 8" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M6 24h20" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              <p class="text-sm font-semibold text-[var(--blue)]">Drop to import</p>
+            </div>
+
+            <!-- Uploading state -->
+            <div id="dz-uploading" class="hidden flex-col items-center gap-3">
+              <div class="spinner" role="status" aria-label="Uploading"></div>
+              <p id="dz-uploading-text" class="text-sm text-[var(--muted)]" aria-live="polite">Importing…</p>
+              <div class="w-full max-w-xs">
+                <div class="conf-bar"><div id="dz-progress" class="conf-bar-fill" style="width:0%;background:#60a5fa"></div></div>
+              </div>
+            </div>
+
+            <!-- Success state -->
+            <div id="dz-success" class="hidden flex-col items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-[rgba(16,185,129,0.12)] border border-[rgba(16,185,129,0.2)] flex items-center justify-center" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 9l4 4 6-7" stroke="#10b981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </div>
+              <p id="dz-success-text" class="text-sm font-semibold text-[var(--emerald)]" aria-live="polite"></p>
+              <button id="dz-reset-btn" class="btn-sm mt-1" type="button" aria-label="Import another file">Import another</button>
+            </div>
+
+            <!-- Error state -->
+            <div id="dz-error" class="hidden flex-col items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-[rgba(239,68,68,0.10)] border border-[rgba(239,68,68,0.2)] flex items-center justify-center" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M9 5v5M9 13h.01" stroke="#ef4444" stroke-width="1.8" stroke-linecap="round"/></svg>
+              </div>
+              <p id="dz-error-text" class="text-sm font-semibold text-[var(--red)]" aria-live="assertive"></p>
+              <button id="dz-retry-btn" class="btn-sm mt-1" type="button" aria-label="Retry import">Retry</button>
+            </div>
+          </div>
+
+          <!-- Import error table (hidden until errors) -->
+          <div id="import-error-table-wrap" class="hidden mt-4">
+            <h3 class="text-xs font-semibold uppercase tracking-wide text-[var(--muted)] mb-2">Row errors</h3>
+            <div class="overflow-x-auto">
+              <table class="tbl text-xs" role="table" aria-label="Import errors">
+                <thead>
+                  <tr>
+                    <th scope="col">Row</th>
+                    <th scope="col">Stage</th>
+                    <th scope="col">Field</th>
+                    <th scope="col">Message</th>
+                  </tr>
+                </thead>
+                <tbody id="import-error-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- New ticket modal (create form) -->
+  <div id="create-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Create ticket" aria-hidden="true">
+    <div class="modal-panel" id="create-panel">
+      <div class="flex items-center justify-between px-6 py-5 border-b border-[var(--border)] flex-shrink-0">
+        <h2 class="text-base font-semibold">New ticket</h2>
+        <button id="btn-close-create" class="btn-sm" type="button" aria-label="Close create ticket panel">✕</button>
+      </div>
+      <form id="create-form" class="flex-1 overflow-y-auto px-6 py-5 space-y-4" novalidate>
+        <div>
+          <label for="new-customer-id" class="block text-xs font-medium text-[var(--muted)] mb-1">Customer ID <span class="text-[var(--red)]">*</span></label>
+          <input id="new-customer-id" name="customer_id" class="input-field w-full" type="text" required aria-required="true" aria-describedby="err-customer-id" />
+          <p id="err-customer-id" class="text-xs text-[var(--red)] mt-1 hidden" aria-live="polite"></p>
+        </div>
+        <div>
+          <label for="new-customer-email" class="block text-xs font-medium text-[var(--muted)] mb-1">Customer email <span class="text-[var(--red)]">*</span></label>
+          <input id="new-customer-email" name="customer_email" class="input-field w-full" type="email" required aria-required="true" aria-describedby="err-customer-email" />
+          <p id="err-customer-email" class="text-xs text-[var(--red)] mt-1 hidden" aria-live="polite"></p>
+        </div>
+        <div>
+          <label for="new-customer-name" class="block text-xs font-medium text-[var(--muted)] mb-1">Customer name</label>
+          <input id="new-customer-name" name="customer_name" class="input-field w-full" type="text" />
+        </div>
+        <div>
+          <label for="new-subject" class="block text-xs font-medium text-[var(--muted)] mb-1">Subject <span class="text-[var(--red)]">*</span></label>
+          <input id="new-subject" name="subject" class="input-field w-full" type="text" required aria-required="true" aria-describedby="err-subject" />
+          <p id="err-subject" class="text-xs text-[var(--red)] mt-1 hidden" aria-live="polite"></p>
+        </div>
+        <div>
+          <label for="new-description" class="block text-xs font-medium text-[var(--muted)] mb-1">Description <span class="text-[var(--red)]">*</span></label>
+          <textarea id="new-description" name="description" class="input-field w-full resize-y" rows="4" required aria-required="true" aria-describedby="err-description"></textarea>
+          <p id="err-description" class="text-xs text-[var(--red)] mt-1 hidden" aria-live="polite"></p>
+        </div>
+        <div>
+          <label for="new-priority" class="block text-xs font-medium text-[var(--muted)] mb-1">Priority</label>
+          <select id="new-priority" name="priority" class="select-field w-full">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div>
+          <label for="new-assigned-to" class="block text-xs font-medium text-[var(--muted)] mb-1">Assign to</label>
+          <input id="new-assigned-to" name="assigned_to" class="input-field w-full" type="text" placeholder="agent-id or email" />
+        </div>
+        <p id="create-error" class="text-sm text-[var(--red)] hidden" aria-live="assertive"></p>
+        <button type="submit" id="btn-create-submit" class="btn-primary w-full justify-center" aria-label="Submit new ticket">
+          Create ticket
+          <span class="icon-wrap" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+        </button>
+      </form>
+    </div>
   </div>
+
+  <!-- Ticket detail modal -->
+  <div id="ticket-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-label="Ticket detail" aria-hidden="true">
+    <div class="modal-panel" id="ticket-panel">
+      <!-- Header -->
+      <div class="flex items-start justify-between px-6 py-5 border-b border-[var(--border)] flex-shrink-0">
+        <div class="min-w-0">
+          <p id="modal-ticket-id" class="font-mono text-xs text-[var(--muted)] truncate"></p>
+          <h2 id="modal-ticket-subject" class="text-base font-semibold mt-0.5 truncate"></h2>
+          <p id="modal-ticket-customer" class="text-sm text-[var(--muted)] mt-0.5"></p>
+        </div>
+        <button id="btn-close-modal" class="btn-sm flex-shrink-0 ml-4" type="button" aria-label="Close ticket detail">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="flex border-b border-[var(--border)] flex-shrink-0" role="tablist" aria-label="Ticket detail tabs">
+        <button class="modal-tab active" role="tab" aria-selected="true" aria-controls="tab-details" id="tab-btn-details" data-tab="details">Details</button>
+        <button class="modal-tab" role="tab" aria-selected="false" aria-controls="tab-status" id="tab-btn-status" data-tab="status">Status</button>
+        <button class="modal-tab" role="tab" aria-selected="false" aria-controls="tab-history" id="tab-btn-history" data-tab="history">History</button>
+      </div>
+
+      <!-- Tab content -->
+      <div class="flex-1 overflow-y-auto">
+        <!-- Details tab -->
+        <div id="tab-details" role="tabpanel" aria-labelledby="tab-btn-details" class="px-6 py-5 space-y-4">
+          <div class="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+            <div>
+              <p class="text-xs text-[var(--muted)] mb-0.5">Category</p>
+              <div class="flex items-center gap-2">
+                <span id="modal-category-badge"></span>
+                <button id="btn-classify" class="btn-sm" type="button" aria-label="Auto-classify ticket">Classify →</button>
+              </div>
+            </div>
+            <div>
+              <p class="text-xs text-[var(--muted)] mb-0.5">Priority</p>
+              <span id="modal-priority-badge"></span>
+            </div>
+            <div>
+              <p class="text-xs text-[var(--muted)] mb-0.5">Status</p>
+              <span id="modal-status-badge-detail"></span>
+            </div>
+            <div>
+              <p class="text-xs text-[var(--muted)] mb-0.5">Version</p>
+              <span id="modal-version" class="font-mono text-xs text-[var(--muted)]"></span>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs text-[var(--muted)] mb-0.5">Subject</p>
+            <p id="modal-subject-full" class="text-sm"></p>
+          </div>
+
+          <div>
+            <p class="text-xs text-[var(--muted)] mb-0.5">Description</p>
+            <p id="modal-description" class="text-sm text-[var(--muted)] whitespace-pre-wrap"></p>
+          </div>
+
+          <div>
+            <p class="text-xs text-[var(--muted)] mb-1">Assigned to</p>
+            <div class="flex items-center gap-2">
+              <span id="modal-assigned" class="font-mono text-xs text-[var(--muted)]"></span>
+              <button id="btn-edit-assigned" class="btn-sm" type="button" aria-label="Edit assigned agent">Edit</button>
+            </div>
+            <div id="assigned-edit-wrap" class="hidden mt-2 flex gap-2">
+              <input id="assigned-input" class="input-field flex-1" type="text" aria-label="New assignee" />
+              <button id="btn-save-assigned" class="btn-sm" type="button" aria-label="Save assignee">Save</button>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-xs text-[var(--muted)] mb-1">Tags</p>
+            <div id="modal-tags" class="flex flex-wrap gap-1"></div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-x-6 text-xs text-[var(--muted)]">
+            <div>
+              <p class="mb-0.5">Created</p>
+              <time id="modal-created-at" class="font-mono"></time>
+            </div>
+            <div>
+              <p class="mb-0.5">Updated</p>
+              <time id="modal-updated-at" class="font-mono"></time>
+            </div>
+          </div>
+
+          <!-- Delete action -->
+          <div class="pt-4 border-t border-[var(--border)]">
+            <button id="btn-delete-ticket" class="text-xs text-[var(--red)] hover:text-red-300 transition-colors duration-200" type="button" aria-label="Delete this ticket">Delete ticket</button>
+          </div>
+          <p id="modal-action-error" class="text-xs text-[var(--red)] hidden" aria-live="assertive"></p>
+        </div>
+
+        <!-- Status tab -->
+        <div id="tab-status" role="tabpanel" aria-labelledby="tab-btn-status" class="hidden px-6 py-5">
+          <div class="mb-6">
+            <p class="text-xs text-[var(--muted)] mb-2">Current status</p>
+            <span id="modal-status-badge-status" class="text-lg"></span>
+          </div>
+          <div>
+            <p class="text-xs text-[var(--muted)] mb-3">Allowed transitions</p>
+            <div id="transition-buttons" class="flex flex-wrap gap-2" role="group" aria-label="Available transitions"></div>
+            <p id="transition-reason-wrap" class="hidden mt-3">
+              <label for="transition-reason" class="text-xs text-[var(--muted)] block mb-1">Reason (optional)</label>
+              <input id="transition-reason" class="input-field w-full" type="text" placeholder="e.g. Starting investigation" aria-label="Transition reason" />
+            </p>
+            <p id="transition-result" class="mt-3 text-sm text-[var(--muted)] hidden" aria-live="polite"></p>
+          </div>
+        </div>
+
+        <!-- History tab -->
+        <div id="tab-history" role="tabpanel" aria-labelledby="tab-btn-history" class="hidden px-6 py-5">
+          <div id="history-loading" class="spinner mx-auto" role="status" aria-label="Loading history"></div>
+          <div id="history-timeline" class="hidden" aria-label="Ticket history timeline"></div>
+          <p id="history-empty" class="hidden text-sm text-[var(--muted)]">No history entries yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="/js/dist/dashboard.js"></script>
 </body>
 </html>
