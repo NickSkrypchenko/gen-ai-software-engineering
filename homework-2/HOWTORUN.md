@@ -14,8 +14,8 @@ This is the cold-start runbook for the Customer Support API. Follow these steps 
 Clone the repository and install dependencies:
 
 ```bash
-git clone <repository-url> customer-support-api
-cd customer-support-api
+git clone https://github.com/NickSkrypchenko/gen-ai-software-engineering.git
+cd gen-ai-software-engineering/homework-2
 npm install
 ```
 
