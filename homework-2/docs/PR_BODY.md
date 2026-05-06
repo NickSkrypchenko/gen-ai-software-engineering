@@ -185,6 +185,67 @@ Body parsers ran before `requestId` middleware — malformed JSON errors returne
 
 ---
 
+## Challenges Encountered
+
+### 1. Vercel static assets not served (404 on dashboard.html)
+
+Vercel has two mutually exclusive deployment modes. The original `vercel.json` used the legacy `builds` array (`@vercel/node` builder for `api/index.ts`). In legacy Builders mode, `outputDirectory` is silently ignored — only what builders explicitly output is served. Every request to `/dashboard.html`, `/js/dist/dashboard.js`, etc. returned 404 regardless of the files being present in the repo.
+
+Fixed by removing the `builds` array entirely, switching to zero-config mode where `outputDirectory: "public"` is respected and `api/index.ts` is auto-detected as a serverless function. The static files are served via Vercel's CDN; the API is routed through rewrites:
+
+```json
+{
+  "framework": null,
+  "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.ts" },
+    { "source": "/health",   "destination": "/api/index.ts" }
+  ]
+}
+```
+
+Vercel prints a warning during legacy-mode builds — `"Due to builds existing in your configuration file, the Build and Development Settings will not apply"` — which is the signal that `outputDirectory` will be ignored.
+
+### 2. TypeScript build error — boolean comparison on query param
+
+The `import.controller.ts` compared `req.query.auto_classify === true` (boolean literal) against an Express query param, which is always `string | string[] | ParsedQs | undefined`. TypeScript 5 correctly flagged this as `TS2367: This comparison appears to be unintentional because the types have no overlap`.
+
+This came from a Phase 4 fix where the Zod middleware coerced `'true'` to boolean `true` for the `auto_classify` field — but the controller still received the raw query string before Zod ran. Fixed by comparing against the string `'true'` only:
+
+```ts
+// Before (TS2367):
+const autoClassify = req.query.auto_classify === true || req.query.auto_classify === 'true';
+
+// After:
+const autoClassify = req.query.auto_classify === 'true';
+```
+
+The root misconception: Zod `validate()` middleware mutates `req.body` but does not replace `req.query` — query params remain raw strings at the controller level.
+
+### 3. `autoClassify` response shape mismatch between controller and frontend
+
+`classify.service.ts` returns `{ ticket, classification }`. The controller destructured and discarded `ticket`, sending only `classification` to the client:
+
+```ts
+// Before:
+const { classification } = await ticketsService.autoClassify(...);
+res.json(classification);
+```
+
+The frontend `api-client.ts` was typed to expect `{ ticket: Ticket; classification: Classification }` and used `res.ticket` to refresh the modal after classification — so the modal silently failed to update. The bug was invisible in unit tests (which only checked the HTTP response body shape) and only surfaced during manual UI testing on the live Vercel deployment.
+
+Fixed by removing the destructuring:
+
+```ts
+// After:
+const result = await ticketsService.autoClassify(...);
+res.json(result);  // { ticket, classification }
+```
+
+Lesson: integration tests should assert on the full response shape, not just that the endpoint returns 200.
+
+---
+
 ## Test coverage
 
 ```
