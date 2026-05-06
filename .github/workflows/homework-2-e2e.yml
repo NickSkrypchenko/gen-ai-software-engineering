@@ -6,10 +6,6 @@ on:
     paths:
       - "homework-2/**"
       - ".github/workflows/homework-2-e2e.yml"
-  pull_request:
-    paths:
-      - "homework-2/**"
-      - ".github/workflows/homework-2-e2e.yml"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
