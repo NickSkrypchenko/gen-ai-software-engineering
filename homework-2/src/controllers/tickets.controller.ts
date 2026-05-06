@@ -57,8 +57,8 @@ export const ticketsController = {
 
   async autoClassify(req: Request, res: Response, next: NextFunction) {
     try {
-      const { classification } = await ticketsService.autoClassify(req.params.id, ifMatchVersion(req));
-      res.json(classification);
+      const result = await ticketsService.autoClassify(req.params.id, ifMatchVersion(req));
+      res.json(result);
     } catch (e) { next(e); }
   },
 
