@@ -20,23 +20,12 @@ jobs:
     name: Vitest + Newman
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: support_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+    # No local Postgres service — project uses @neondatabase/serverless (WebSocket
+    # driver) which cannot connect to a local Docker container. CI uses the real
+    # Neon test branch via DATABASE_URL secret (same as local .env.test).
 
     env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/support_test
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
       NODE_ENV: test
       LOG_LEVEL: silent
 
