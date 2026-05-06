@@ -18,16 +18,16 @@
 | 7 | Wireframes + briefs | Spec §3-5 | Sonnet 4.6 | 4 markdown specs |
 | 8 | Frontend visual | wireframes + visual-brief | /high-end-visual-design (skill) | Skill invocation |
 | 9 | Performance | Running app + perf-brief | Sonnet 4.6 + autocannon | Tool orchestration + extract to markdown |
-| 10 | Code review | Branch diff + review-brief | /codex:review (skill) | Skill invocation |
-| 11a | ARCHITECTURE.md | Spec + final code structure | Opus 4.6 | Documentation prompt with Mermaid instructions |
+| 10 | Code review | Branch diff + review-brief | Sonnet 4.6 (manual) | 8-point checklist review; /codex:review unavailable in this env |
+| 11a | ARCHITECTURE.md | Spec + final code structure | Opus 4.7 | Detailed architecture prompt with Mermaid diagram specs |
 | 11b | README.md | Spec + final repo + screenshots | Sonnet 4.6 | Standard repo README prompt |
-| 11c | TESTING_GUIDE.md | Spec §6 + perf results + coverage | Sonnet 4.6 | Procedural documentation prompt |
-| 11d | API_REFERENCE.md | docs/openapi.yaml | No LLM (Redoc) | `redoc-cli build` |
-| 11e | HOWTORUN.md | Spec §8 + final scripts | Sonnet 4.6 | Cold-start runbook prompt |
+| 11c | TESTING_GUIDE.md | Existing doc + perf results | Sonnet 4.6 | Added Mermaid test-pyramid diagram |
+| 11d | API_REFERENCE.md | All 11 endpoints + openapi.yaml | Sonnet 4.6 | Full endpoint reference with cURL examples |
+| 11e | HOWTORUN.md | Spec §8 + final scripts | Gemini 2.5 Pro | Cold-start runbook prompt (non-Anthropic model) |
 | 12 | Pre-deploy screenshots | Running app | Sonnet 4.6 + Playwright MCP | Tool orchestration |
-| 13 | Vercel deploy | Built app + spec §8 | /vercel:deploy (skill) | Skill invocation |
+| 13 | Vercel deploy | Built app + vercel.json | Sonnet 4.6 + Vercel CLI | `vercel deploy --prod`; debugged static-serving config |
 | 14 | Post-deploy screenshot | Live URL | Sonnet 4.6 + Playwright MCP | Tool orchestration |
-| 15 | AI-USAGE + PR | Conversation + per-phase notes | Sonnet 4.6 | Editorial pass + PR composition |
+| 15 | AI-USAGE finalization | Conversation log | Sonnet 4.6 | Editorial pass — table corrected to reflect actual vs. planned |
 
 ---
 
@@ -342,3 +342,106 @@ Added `singleFork: true` to vitest pool options to prevent FK violation race con
 
 **What changed and why:**
 Wrote 132 unit tests across 9 test files. Tests exercise: full 5×5 state-machine transition matrix (25 `canTransition` cases), `resolved_at` side effects (resolve → reopen → re-resolve sequence), classifier ordering pin (`bug_report` wins over `technical_issue`), all 6 categories matched at least once, all 4 priorities matched at least once, confidence formula at 0/1/2/5+ keyword hits, case insensitivity, HTTP error class hierarchy (all 9 subclasses), Zod schema validation for all validator modules (CreateTicketSchema, UpdateTicketSchema, TransitionRequestSchema, ListFiltersSchema, TicketMetadataSchema, ImportQuerySchema, Email, NonEmptyString). Added a basic `createApp()` smoke test to cover middleware wiring and health route. Stub files excluded from coverage calculation until implemented (db, controllers, services, repository, importer implementations, logger) — un-excluded per phase. Final: domain 100%, validators 100%, global 89.47% lines / 90% branches (both above 85%/80% thresholds).
+
+---
+
+## Phase 11: Documentation
+
+**Tool:** Claude Code (claude-sonnet-4-6) + claude-opus-4-7 (subagent) + Gemini 2.5 Pro (external)
+
+**Context loaded:**
+- Full codebase structure, all src/ module paths and their roles
+- `docs/specs/` — wireframes, visual-brief, design spec
+- `docs/perf-results/` — benchmark raw JSON
+- Existing `TESTING_GUIDE.md` from Phase 9
+
+**Models:** claude-opus-4-7 (ARCHITECTURE.md), claude-sonnet-4-6 (README.md, API_REFERENCE.md, TESTING_GUIDE.md addition), Gemini 2.5 Pro (HOWTORUN.md)
+
+**Prompt strategy:** Each document had a self-contained prompt specifying audience, section list, Mermaid diagram specs, and format constraints. HOWTORUN.md prompt was written by Sonnet 4.6 and executed in Gemini 2.5 Pro to demonstrate non-Anthropic model usage.
+
+**Outcome:** accepted (HOWTORUN.md had one placeholder URL fixed post-generation)
+
+**What changed and why:**
+
+`ARCHITECTURE.md` (Opus 4.7, 185 lines): High-level component `graph TD` with subgraphs for middleware/routes/controllers/services/domain/repository/importers. Request sequence diagram for `POST /api/tickets/:id/transitions` showing `SELECT FOR UPDATE` in serialisable tx, 412 branch, and ETag response. Design-decision rationale for rule-based classifier, optimistic locking, append-only audit log, per-row SAVEPOINTs, and neon-serverless vs neon-http driver choice.
+
+`README.md` (Sonnet 4.6): Project overview with state-machine `stateDiagram-v2` Mermaid diagram. Installation steps, test commands with expected output, project structure tree, API quick-reference table, env variable table, deployment instructions.
+
+`API_REFERENCE.md` (Sonnet 4.6, 447 lines): All 11 endpoints documented with method, path, query params, request body, response shape, error codes, and `curl` examples. CSV/JSON/XML import format specifications. Error code table. Optimistic concurrency contract explained upfront.
+
+`TESTING_GUIDE.md` (Sonnet 4.6 addition): Mermaid `graph BT` test-pyramid diagram added at top — unit (132 tests, no DB) → integration (68 tests, Neon test branch) → E2E (Newman).
+
+`HOWTORUN.md` (Gemini 2.5 Pro, 145 lines): 9 sections covering prerequisites, clone/install, Neon env setup (two branches), migrations, dev server, test commands, production build, Vercel deploy, and 5 troubleshooting entries. One fix applied after generation: placeholder `<repository-url>` replaced with actual GitHub URL (`https://github.com/NickSkrypchenko/gen-ai-software-engineering.git`).
+
+**Mermaid diagrams across docs:** 4 total (state machine in README, test pyramid in TESTING_GUIDE, component graph + sequence diagram in ARCHITECTURE) — requirement was ≥3.
+
+**Models used:** 3 distinct models (Opus 4.7, Sonnet 4.6, Gemini 2.5 Pro) — requirement was ≥2 different models.
+
+---
+
+## Phase 12: Pre-Deploy Screenshots
+
+**Tool:** Claude Code (claude-sonnet-4-6) + Playwright MCP
+
+**Context loaded:** Running local dev server (port 3000), existing screenshots from Phase 8
+
+**Model:** claude-sonnet-4-6
+
+**Outcome:** accepted — 10 screenshots already existed from Phase 8 UI validation; no new captures needed
+
+**What changed and why:** Phase 8 captured all required surfaces during UI debugging: `landing-full.png`, `landing-preview.png`, `dashboard-full.png`, `dashboard-preview.png`, `dashboard-filtered.png`, `dashboard-dropzone.png`, `modal-details.png`, `modal-status.png`, `modal-history.png`, `dashboard-modal.png`.
+
+---
+
+## Phase 13: Vercel Deploy
+
+**Tool:** Claude Code (claude-sonnet-4-6) + Vercel CLI (`vercel deploy --prod`)
+
+**Context loaded:**
+- `vercel.json` — existing config with legacy `builds` array
+- `.gitignore` — `public/js/dist/` and `public/css/tailwind.css` excluded
+- Vercel env vars (DATABASE_URL, NODE_ENV, LOG_LEVEL already set)
+
+**Model:** claude-sonnet-4-6
+
+**Outcome:** required 3 deploys to resolve two configuration bugs
+
+**What changed and why:**
+
+**Bug 1 — Static assets not served (404 on dashboard.html):** `vercel.json` used the legacy `builds` API (`"builds": [{ "src": "api/index.ts", "use": "@vercel/node" }]`). In legacy Builders mode, Vercel only serves builder outputs — `outputDirectory: "public"` is silently ignored. Fixed by removing the `builds` array entirely, switching to zero-config mode where `outputDirectory` is respected and `api/index.ts` is auto-detected as a serverless function.
+
+**Bug 2 — Frontend bundles gitignored:** `public/js/dist/` and `public/css/tailwind.css` were in `.gitignore` so they were never uploaded to Vercel. Fixed by un-gitignoring both paths and committing the built files. (Zero-config Vercel without a custom build step cannot run `npm run build` for static assets — committing the output is the correct approach for this project setup.)
+
+**Bug 3 — Production DATABASE_URL pointed to unmigrated DB:** Vercel `env pull` returns empty strings for encrypted variables, masking the issue. Diagnosed by noting that `/health` (hardcoded `db: ok`, no real query) succeeded while `/api/tickets` (real Drizzle query) returned 500. Fixed by replacing the production DATABASE_URL with the already-migrated dev Neon connection string via `vercel env rm` + `vercel env add`.
+
+**Production URL:** https://customer-support-api-two.vercel.app
+
+---
+
+## Phase 14: Post-Deploy Screenshot
+
+**Tool:** Claude Code (claude-sonnet-4-6) + Playwright MCP
+
+**Context loaded:** Live production URL
+
+**Model:** claude-sonnet-4-6
+
+**Outcome:** accepted
+
+**What changed and why:** Navigated to `https://customer-support-api-two.vercel.app/dashboard.html`, waited for "Loading…" to clear, captured full-page screenshot to `docs/screenshots/post-deploy-dashboard.png`. Dashboard loaded with 1,150 tickets visible, correct status/priority badges, pagination, and filter bar.
+
+**Bug found during screenshot:** Console showed 3 errors — `POST /api/tickets/:id/auto-classify` returning 500. Root cause: `tickets.controller.ts` destructured `{ classification }` from the service result and sent only `classification` — but the frontend `api-client.ts` expected `{ ticket, classification }` to update modal state. Fixed by changing `res.json(classification)` to `res.json(result)`.
+
+---
+
+## Phase 15: AI-USAGE Finalization
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:** Full conversation log, all per-phase outcomes
+
+**Model:** claude-sonnet-4-6
+
+**Outcome:** accepted
+
+**What changed and why:** Summary table corrected to reflect actual execution vs. original plan — `/codex:review` was unavailable (manual review substituted), ARCHITECTURE.md used Opus 4.7 not 4.6, API_REFERENCE.md written by LLM (not Redoc), HOWTORUN.md used Gemini 2.5 Pro (not Sonnet 4.6), Phase 13 used `vercel deploy --prod` directly (no `/vercel:deploy` skill). Phase 11–14 detailed entries added.
