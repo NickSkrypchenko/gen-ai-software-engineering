@@ -109,6 +109,32 @@ Results summary (Apple M1 Pro, Wi-Fi → Neon us-east-1):
 
 ---
 
+## Phase 10: Code Review
+
+**Tool:** Claude Code (claude-sonnet-4-6) — manual review pass (no `/codex:review` skill available in this environment)
+
+**Context loaded:**
+- `docs/specs/review-brief.md` — 8-point review checklist
+- Full branch diff against Phase 9 commit
+- `src/domain/ticket-state-machine.ts`, `src/app.ts`, `src/middleware/error-handler.ts`
+
+**Model:** claude-sonnet-4-6
+
+**Prompt (verbatim):**
+> Review the branch diff against the 8-point checklist from review-brief.md. Report PASS/FAIL per item with file:line citations.
+
+**Outcome:** 2 FAILs found and fixed; 6 PASSes
+
+**What changed and why:**
+
+**FAIL 1 — State machine `resolved_at` cleared on `resolved → closed`** (`src/domain/ticket-state-machine.ts:36-37`): The original logic branched on `ticket.status === 'resolved' || ticket.status === 'closed'` to clear `resolved_at`, which incorrectly covered the `resolved → closed` transition (a finalising step, not a reopen). Spec §3.4 requires `resolved_at` to be *preserved* on `resolved → closed`. Fixed by adding an explicit `to === 'closed'` branch that returns `ticket.resolved_at` before the reopen-clear branch.
+
+**FAIL 2 — Parse-time errors missing `requestId`** (`src/app.ts:14-16`): Body parsers (`express.json`, `express.urlencoded`) were registered before the `requestId` middleware, so malformed-JSON errors thrown by the body parser ran before `req.id` was set. The `error-handler.ts` reads `X-Request-Id` from response headers (set by `requestId` middleware) to include it in the error response — but only if that middleware ran first. Fixed by moving `app.use(requestId)` to be the first middleware registered, before `cors` and body parsers.
+
+All 212 tests pass after both fixes. Coverage unchanged: 96.29% stmts.
+
+---
+
 ## Phase 8: Frontend Visual
 
 **Tool:** Claude Code (claude-sonnet-4-6) + `/high-end-visual-design` skill

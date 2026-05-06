@@ -33,9 +33,11 @@ export function transition(ticket: Ticket, to: TicketStatus, now: Date): Transit
   const resolved_at =
     to === 'resolved'
       ? now
-      : ticket.status === 'resolved' || ticket.status === 'closed'
-        ? null
-        : ticket.resolved_at;
+      : to === 'closed'
+        ? ticket.resolved_at                                            // resolved→closed: preserve (finalize, not reopen)
+        : ticket.status === 'resolved' || ticket.status === 'closed'
+          ? null                                                        // reopen: clear
+          : ticket.resolved_at;
 
   return {
     from:   ticket.status,

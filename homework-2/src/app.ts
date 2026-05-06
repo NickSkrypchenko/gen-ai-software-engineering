@@ -10,10 +10,10 @@ import { importRouter } from './routes/import.routes';
 export function createApp() {
   const app = express();
 
+  app.use(requestId);  // must run before body parsers so parse errors include requestId
   app.use(cors({ origin: config.corsOrigin }));
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true }));
-  app.use(requestId);
 
   // Static frontend
   app.use(express.static('public'));
