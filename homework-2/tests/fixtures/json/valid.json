@@ -1,0 +1,24 @@
+[
+  {
+    "customer_id":    "CUST-J01",
+    "customer_email": "juser1@example.com",
+    "customer_name":  "JSON User 1",
+    "subject":        "Feature request for dark mode",
+    "description":    "Please add a dark mode option to the application interface.",
+    "category":       "feature_request",
+    "priority":       "low",
+    "tags":           ["feature", "ui"],
+    "metadata":       { "source": "api" }
+  },
+  {
+    "customer_id":    "CUST-J02",
+    "customer_email": "juser2@example.com",
+    "customer_name":  "JSON User 2",
+    "subject":        "Technical support needed",
+    "description":    "I need help configuring the API integration with my system.",
+    "category":       "technical_issue",
+    "priority":       "medium",
+    "tags":           [],
+    "metadata":       { "source": "api" }
+  }
+]

@@ -10,8 +10,9 @@ dist/
 
 # Environment files
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
 *.env
 
 # IDE and editor files
@@ -43,6 +44,13 @@ htmlcov/
 *.war
 *.ear
 
+# Deploy / platform-specific
+.vercel/
+.herenow/
+.deploy/
+.next/
+.cache/
+
 # Temporary files
 tmp/
 temp/
@@ -56,3 +64,7 @@ temp/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
+
+# Claude Code & MCP local caches
+.claude/
+.playwright-mcp/

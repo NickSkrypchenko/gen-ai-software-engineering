@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "rootDir": "public/js",
+    "outDir": "public/js/dist",
+    "noEmit": true
+  },
+  "include": ["public/js/**/*"],
+  "exclude": ["node_modules"]
+}

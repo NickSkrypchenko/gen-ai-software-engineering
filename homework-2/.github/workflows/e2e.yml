@@ -1,0 +1,85 @@
+name: CI — Test + Newman e2e
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "homework-2/**"
+      - ".github/workflows/e2e.yml"
+  pull_request:
+    paths:
+      - "homework-2/**"
+      - ".github/workflows/e2e.yml"
+
+defaults:
+  run:
+    working-directory: homework-2
+
+jobs:
+  test:
+    name: Vitest + Newman
+    runs-on: ubuntu-latest
+
+    # No local Postgres service — project uses @neondatabase/serverless (WebSocket
+    # driver) which cannot connect to a local Docker container. CI uses the real
+    # Neon test branch via DATABASE_URL secret (same as local .env.test).
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NODE_ENV: test
+      LOG_LEVEL: silent
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: homework-2/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run DB migrations
+        run: npm run db:migrate
+
+      - name: Run Vitest (unit + integration + coverage)
+        run: npm test
+
+      - name: Seed database
+        run: npm run db:seed
+
+      - name: Build server
+        run: npm run build
+
+      - name: Start server in background
+        run: npm start &
+
+      - name: Wait for server
+        run: npx wait-on http://localhost:3000/health -t 30000
+
+      - name: Run Newman e2e
+        run: |
+          npx newman run demo/postman-collection.json \
+            --env-var baseUrl=http://localhost:3000 \
+            --reporters cli,htmlextra \
+            --reporter-htmlextra-export docs/screenshots/newman-results.html \
+            --timeout-request 10000 \
+            || true
+
+      - name: Upload Newman report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: newman-results
+          path: homework-2/docs/screenshots/newman-results.html
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: homework-2/coverage/
+          if-no-files-found: warn

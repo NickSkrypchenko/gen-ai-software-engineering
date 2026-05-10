@@ -1,0 +1,811 @@
+openapi: 3.1.0
+info:
+  title: Customer Support API
+  version: 1.0.0
+  description: Intelligent Customer Support Ticket System — Homework 2
+servers:
+  - url: http://localhost:3000
+    description: Local dev
+  - url: https://customer-support-api.vercel.app
+    description: Production
+components:
+  schemas:
+    Ticket:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        customer_id:
+          type: string
+        customer_email:
+          type: string
+          format: email
+        customer_name:
+          type: string
+        subject:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+          enum: &a1
+            - account_access
+            - technical_issue
+            - billing_question
+            - feature_request
+            - bug_report
+            - other
+        priority:
+          type: string
+          enum: &a2
+            - urgent
+            - high
+            - medium
+            - low
+        status:
+          type: string
+          enum: &a3
+            - new
+            - in_progress
+            - waiting_customer
+            - resolved
+            - closed
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        assigned_to:
+          type:
+            - string
+            - "null"
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          properties:
+            source:
+              type: string
+          required:
+            - source
+        version:
+          type: integer
+      required:
+        - id
+        - customer_id
+        - customer_email
+        - customer_name
+        - subject
+        - description
+        - category
+        - priority
+        - status
+        - created_at
+        - updated_at
+        - resolved_at
+        - assigned_to
+        - tags
+        - metadata
+        - version
+      title: Ticket
+    ClassificationResult:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: *a1
+        priority:
+          type: string
+          enum: *a2
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        reasoning:
+          type: string
+        matched_keywords:
+          type: array
+          items:
+            type: string
+        source:
+          type: string
+        classified_at:
+          type: string
+          format: date-time
+      required:
+        - category
+        - priority
+        - confidence
+        - reasoning
+        - matched_keywords
+        - source
+        - classified_at
+      title: ClassificationResult
+    Transition:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticket_id:
+          type: string
+          format: uuid
+        from_status:
+          type:
+            - string
+            - "null"
+          enum: *a3
+        to_status:
+          type: string
+          enum: *a3
+        changed_at:
+          type: string
+          format: date-time
+        changed_by:
+          type:
+            - string
+            - "null"
+        reason:
+          type:
+            - string
+            - "null"
+      required:
+        - id
+        - ticket_id
+        - from_status
+        - to_status
+        - changed_at
+        - changed_by
+        - reason
+      title: Transition
+    ImportSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        succeeded:
+          type: integer
+        failed:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              stage:
+                type: string
+                enum:
+                  - parse
+                  - validate
+                  - insert
+              field:
+                type: string
+              message:
+                type: string
+            required:
+              - row
+              - stage
+              - message
+        ticket_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        auto_classified:
+          type: integer
+      required:
+        - total
+        - succeeded
+        - failed
+        - ticket_ids
+      title: ImportSummary
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        requestId:
+          type: string
+        details:
+          type: array
+          items: {}
+      required:
+        - error
+        - code
+      title: Error
+  parameters: {}
+paths:
+  /api/tickets:
+    post:
+      summary: Create a ticket
+      parameters:
+        - schema:
+            type: boolean
+          required: false
+          name: auto_classify
+          in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_id:
+                  type: string
+                  minLength: 1
+                  maxLength: 64
+                customer_email:
+                  type: string
+                  maxLength: 255
+                  pattern: ^[^\s@]+@[^\s@]+\.[^\s@]+$
+                customer_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                subject:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+                category:
+                  type: string
+                  enum: *a1
+                  default: other
+                priority:
+                  type: string
+                  enum: *a2
+                  default: medium
+                assigned_to:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                  maxLength: 200
+                tags:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 50
+                  maxItems: 20
+                  default: &a4 []
+                metadata:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                      enum: &a5
+                        - web_form
+                        - email
+                        - api
+                        - chat
+                        - phone
+                    browser:
+                      type: string
+                      maxLength: 200
+                    device_type:
+                      type: string
+                      enum: &a6
+                        - desktop
+                        - mobile
+                        - tablet
+                  required:
+                    - source
+                  additionalProperties: false
+              required:
+                - customer_id
+                - customer_email
+                - customer_name
+                - subject
+                - description
+                - metadata
+              additionalProperties: false
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: List tickets
+      parameters:
+        - schema:
+            type: string
+            enum: *a3
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+            enum: *a1
+          required: false
+          name: category
+          in: query
+        - schema:
+            type: string
+            enum: *a2
+          required: false
+          name: priority
+          in: query
+        - schema:
+            type: string
+            maxLength: 200
+          required: false
+          name: assigned_to
+          in: query
+        - schema:
+            type: string
+            maxLength: 64
+          required: false
+          name: customer_id
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: from
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: to
+          in: query
+        - schema:
+            type: string
+            minLength: 2
+            maxLength: 200
+          required: false
+          name: q
+          in: query
+        - schema:
+            type: integer
+            exclusiveMinimum: 0
+            maximum: 200
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type:
+              - integer
+              - "null"
+            minimum: 0
+            default: 0
+          required: false
+          name: offset
+          in: query
+      responses:
+        "200":
+          description: Paginated list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Ticket"
+                  count:
+                    type: integer
+                  page:
+                    type: integer
+                required:
+                  - data
+                  - count
+                  - page
+        "400":
+          description: Invalid filter value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/tickets/{id}:
+    get:
+      summary: Get ticket by ID
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update ticket (partial)
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                customer_name:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                subject:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+                category:
+                  type: string
+                  enum: *a1
+                  default: other
+                priority:
+                  type: string
+                  enum: *a2
+                  default: medium
+                assigned_to:
+                  type:
+                    - string
+                    - "null"
+                  minLength: 1
+                  maxLength: 200
+                tags:
+                  type: array
+                  items:
+                    type: string
+                    minLength: 1
+                    maxLength: 50
+                  maxItems: 20
+                  default: *a4
+                metadata:
+                  type: object
+                  properties:
+                    source:
+                      type: string
+                      enum: *a5
+                    browser:
+                      type: string
+                      maxLength: 200
+                    device_type:
+                      type: string
+                      enum: *a6
+                  required:
+                    - source
+                  additionalProperties: false
+              additionalProperties: false
+      responses:
+        "200":
+          description: Updated ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "428":
+          description: If-Match required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete ticket
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "428":
+          description: If-Match required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/tickets/{id}/transitions:
+    post:
+      summary: Transition ticket status
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                to:
+                  type: string
+                  enum: *a3
+                reason:
+                  type: string
+                  maxLength: 500
+              required:
+                - to
+              additionalProperties: false
+      responses:
+        "200":
+          description: Transitioned ticket
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ticket"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "428":
+          description: If-Match required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    get:
+      summary: Get transition audit log
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Transitions (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transition"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/tickets/{id}/auto-classify:
+    post:
+      summary: Auto-classify ticket
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: true
+          name: If-Match
+          in: header
+      responses:
+        "200":
+          description: Classification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClassificationResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "428":
+          description: If-Match required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/tickets/{id}/classifications:
+    get:
+      summary: Get classification history
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+            description: Ticket UUID (v7)
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Classifications (newest first)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClassificationResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /api/tickets/import:
+    post:
+      summary: Bulk import tickets from file
+      parameters:
+        - schema:
+            type: string
+            enum:
+              - csv
+              - json
+              - xml
+          required: true
+          name: format
+          in: query
+        - schema:
+            type:
+              - boolean
+              - "null"
+            default: false
+          required: false
+          name: auto_classify
+          in: query
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportSummary"
+        "400":
+          description: Parse error or missing format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "413":
+          description: File too large
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "415":
+          description: Not multipart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /health:
+    get:
+      summary: Health check
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  uptime:
+                    type: number
+                  db:
+                    type: string
+                required:
+                  - status
+                  - uptime
+                  - db
+webhooks: {}

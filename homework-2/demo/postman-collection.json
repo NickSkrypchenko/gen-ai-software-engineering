@@ -1,0 +1,371 @@
+{
+  "info": {
+    "_postman_id": "customer-support-api-hw2",
+    "name": "Customer Support API — homework-2",
+    "description": "Intelligent Customer Support Ticket System — full collection for Newman e2e tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000", "type": "string" },
+    { "key": "ticketId", "value": "", "type": "string" },
+    { "key": "ticketVersion", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status ok', () => { const b = pm.response.json(); pm.expect(b.status).to.eql('ok'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tickets",
+      "item": [
+        {
+          "name": "POST /api/tickets",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer_id\": \"CUST-NEWMAN-001\",\n  \"customer_email\": \"newman@example.com\",\n  \"customer_name\": \"Newman Test\",\n  \"subject\": \"Newman test ticket\",\n  \"description\": \"Created by Newman e2e test suite.\",\n  \"category\": \"other\",\n  \"priority\": \"medium\",\n  \"tags\": [\"newman\"],\n  \"metadata\": { \"source\": \"api\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "const b = pm.response.json();",
+                  "pm.test('has id', () => pm.expect(b.id).to.be.a('string'));",
+                  "pm.test('version 1', () => pm.expect(b.version).to.eql(1));",
+                  "pm.test('status new', () => pm.expect(b.status).to.eql('new'));",
+                  "pm.collectionVariables.set('ticketId', b.id);",
+                  "pm.collectionVariables.set('ticketVersion', String(b.version));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/tickets?limit=10&offset=0",
+              "query": [
+                { "key": "limit",  "value": "10" },
+                { "key": "offset", "value": "0" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('has data array', () => pm.expect(b.data).to.be.an('array'));",
+                  "pm.test('has count', () => pm.expect(b.count).to.be.a('number'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets/:id",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('ETag header present', () => pm.expect(pm.response.headers.get('ETag')).to.match(/^\"\\d+\"$/));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set('ticketVersion', String(b.version));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/tickets/:id",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "If-Match", "value": "\"{{ticketVersion}}\"" }
+            ],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"subject\": \"Newman updated subject\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('version incremented', () => pm.expect(b.version).to.be.above(1));",
+                  "pm.collectionVariables.set('ticketVersion', String(b.version));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/tickets/:id — stale version → 412",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "If-Match", "value": "\"999\"" }
+            ],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}",
+            "body": { "mode": "raw", "raw": "{ \"subject\": \"Should fail\" }" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 412', () => pm.response.to.have.status(412));",
+                  "pm.test('code VERSION_CONFLICT', () => pm.expect(pm.response.json().code).to.eql('VERSION_CONFLICT'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/tickets/:id/transitions",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "If-Match", "value": "\"{{ticketVersion}}\"" }
+            ],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}/transitions",
+            "body": { "mode": "raw", "raw": "{ \"to\": \"in_progress\", \"reason\": \"Newman e2e\" }" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('status in_progress', () => pm.expect(pm.response.json().status).to.eql('in_progress'));",
+                  "pm.collectionVariables.set('ticketVersion', String(pm.response.json().version));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/tickets/:id/transitions — invalid → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "If-Match", "value": "\"{{ticketVersion}}\"" }
+            ],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}/transitions",
+            "body": { "mode": "raw", "raw": "{ \"to\": \"closed\" }" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('code INVALID_TRANSITION', () => pm.expect(pm.response.json().code).to.eql('INVALID_TRANSITION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /api/tickets/:id/auto-classify",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "If-Match", "value": "\"{{ticketVersion}}\"" }],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}/auto-classify"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('has category', () => pm.expect(b.category).to.be.a('string'));",
+                  "pm.test('confidence range', () => pm.expect(b.confidence).to.be.within(0, 1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets/:id/transitions",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}/transitions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('at least 2 entries', () => pm.expect(pm.response.json().length).to.be.at.least(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets/:id/classifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}/classifications"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /api/tickets/:id",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "If-Match", "value": "\"{{ticketVersion}}\"" }],
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets/:id after delete → 404",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/{{ticketId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error cases",
+      "item": [
+        {
+          "name": "POST /api/tickets — invalid body → 400",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/tickets",
+            "body": { "mode": "raw", "raw": "{ \"subject\": \"missing required fields\" }" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('code VALIDATION_ERROR', () => pm.expect(pm.response.json().code).to.eql('VALIDATION_ERROR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /api/tickets/:id — not found → 404",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('code NOT_FOUND', () => pm.expect(pm.response.json().code).to.eql('NOT_FOUND'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "PUT /api/tickets/:id — no If-Match → 428",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/tickets/00000000-0000-0000-0000-000000000001",
+            "body": { "mode": "raw", "raw": "{ \"subject\": \"no if-match\" }" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('status 428', () => pm.response.to.have.status(428));",
+                  "pm.test('code PRECONDITION_REQUIRED', () => pm.expect(pm.response.json().code).to.eql('PRECONDITION_REQUIRED'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

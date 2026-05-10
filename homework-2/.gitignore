@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.env
+.env.test
+.env.production
+.env.local
+coverage/
+# public/css/tailwind.css  — committed for Vercel static deploy
+# public/js/dist/          — committed for Vercel static deploy
+.vercel/
+*.log
+.DS_Store
+# docs/perf-results/*.json  — committed as Phase 9 evidence
