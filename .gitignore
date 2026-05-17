@@ -68,3 +68,4 @@ ehthumbs.db
 # Claude Code & MCP local caches
 .claude/
 .playwright-mcp/
+CLAUDE.md
