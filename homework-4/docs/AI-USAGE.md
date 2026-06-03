@@ -117,6 +117,30 @@ the Bug Researcher reads bug-context.md and explores src/ from there.
 
 ---
 
+## Phase 5: Loaders + validators + unit tests
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §3.2 (AgentSpecSchema, MODELS/TOOLS enums), §4.5 (skill-loader, validateSkillStructure)
+- Implementations from Phase 0 (agent-loader, skill-loader, validators, messages)
+
+**Prompt:** _(authoring phase — spec §3.2/§4.5 consumed directly)_
+> Write unit tests for agent-loader (8 tests), skill-loader (4 tests), validators (4 tests),
+> messages (3 tests). Create fixture agents and skills. All must pass.
+
+**Outcome:** accepted (with one fix — initial test used empty async fn with `.rejects.toThrow()`, replaced with `mkdtempSync` temp dir for real file-based test isolation)
+
+**What changed and why:**
+25 unit tests across 4 test files. agent-loader tests cover valid load, empty dir, missing dir,
+invalid model, invalid name, invalid tool, max_tokens default. skill-loader tests cover
+required-header validation (each missing header), loadAllSkills with valid fixture.
+validators tests cover skill-ref cross-check (pass + fail). messages tests cover
+XML tag generation, multi-part join, name attribute. Fixture files created for agent
+validation tests (valid, bad-model, bad-name, bad-tool) and skill tests (valid, missing-section).
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
