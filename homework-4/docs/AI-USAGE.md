@@ -141,6 +141,28 @@ validation tests (valid, bad-model, bad-name, bad-tool) and skill tests (valid, 
 
 ---
 
+## Phase 6: Claude runner + messages + tests
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §6.4 (subprocess wrapper, ~40 LOC), §6.6 (buildUserMessage)
+- messages.ts already implemented in Phase 0
+
+**Prompt:** _(authoring phase — spec §6.4/§6.6 consumed directly)_
+> Implement claude-runner.ts (~40 LOC subprocess wrapper) and its unit tests.
+> Subprocess mock must work without mocking node:child_process.
+
+**Outcome:** accepted (with design change — see decisions log)
+
+**What changed and why:**
+`claude-runner.ts` implemented with `buildSystemPrompt` (skill XML injection) and `runAgent`
+(subprocess wrapper with ENOENT/SIGTERM/empty-output error handling). `spawnClaude` exported
+as injectable seam to avoid CommonJS module mocking issues. 7 unit tests using vi.fn() injection
+rather than `vi.mock('node:child_process')` which doesn't intercept CJS local bindings.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
@@ -149,4 +171,5 @@ validation tests (valid, bad-model, bad-name, bad-tool) and skill tests (valid, 
 - **`Promise.allSettled` for stages 5-6** — partial-failure isolation (both complete even if one fails).
 - **CommonJS module format** chosen over ESM for tsx compatibility and zero `.js` extension friction on local imports.
 - **`runAgent` returns `{ text, durationMs }`** — not `{ text, turns, usage }` as in SDK design. Subprocess stdout doesn't expose token counts. Duration logged instead.
+- **`spawnClaude` exported as injectable seam** — `vi.mock('node:child_process')` doesn't intercept CommonJS local bindings. `runAgent` accepts `spawn` as a defaulted parameter. Tests inject `vi.fn()` directly. Avoids all module system hacks.
 - _(add more as decisions arise during build)_
