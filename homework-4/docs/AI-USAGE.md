@@ -72,6 +72,31 @@ valid token returns `valid:true` and alg=none exploit returns `valid:true` pre-f
 
 ---
 
+## Phase 3: Baseline tests + fixtures
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §7.1 (baseline test code, 5 tests), §7.5 (fixture generation helper)
+- `tests/jwt-fixtures.ts` (token helpers)
+
+**Prompt:** _(authoring phase — spec §7.1/§7.5 consumed directly)_
+> Implement tests/jwt-verifier.test.ts (5 baseline tests, 3 failing pre-fix),
+> tests/jwt-fixtures.ts (signedToken/unsignedToken/now helpers), scripts/generate-fixtures.ts
+> (one-time helper writing 3 fixture files). vitest.config updated with JWT_SECRET env var.
+
+**Outcome:** accepted (with one fix — see decisions log)
+
+**What changed and why:**
+5 baseline tests written exactly per spec §7.1 with FIRST-compliant `beforeEach/afterEach`
+fake-timer pair. `signedToken`/`unsignedToken` helpers use `node:crypto` directly — no
+external `jsonwebtoken` dep. Fixture files generated and committed. Test run confirms
+3 failing (Bug 001 alg=none bypass, Bug 002 exp boundary, Bug 003 timingSafeEqual), 2 passing.
+Fix applied: added `test.env.JWT_SECRET` to vitest.config — verifyToken reads env var which
+isn't loaded by dotenv in test env (only src/index.ts imports dotenv/config).
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
