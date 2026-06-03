@@ -47,6 +47,31 @@ Created full project scaffold: `package.json` (deps: vitest, gray-matter, zod, d
 
 ---
 
+## Phase 2: Sample JWT app
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §5 (sample JWT verifier CLI, 5 sections + decoder shape §5.7)
+- Spec §5.3-5.5 (3 seeded bug specs, exact code with bug markers)
+
+**Prompt:** _(authoring phase — spec §5 consumed directly)_
+> Implement src/types.ts, src/jwt/decoder.ts, src/jwt/signature.ts, src/jwt/claims.ts,
+> src/jwt/verifier.ts, src/index.ts per spec §5. 3 bugs embedded exactly as specced.
+> Decoder must return { rawHeader, rawPayload, signature, header, payload } — critical shape.
+
+**Outcome:** accepted
+
+**What changed and why:**
+6 files created (~250 LOC). `DecodedToken` interface returns both raw base64url strings
+(`rawHeader`, `rawPayload`) and decoded JS objects (`header`, `payload`) — required for
+correct JWT signing. Bug 001 in verifier.ts (alg=none bypass at `header.alg === 'none'`
+returns `valid: true`), Bug 002 in claims.ts (strict `<` instead of `<=` for exp), Bug 003
+in signature.ts (string equality `===` instead of `timingSafeEqual`). CLI smoke test confirms
+valid token returns `valid:true` and alg=none exploit returns `valid:true` pre-fix.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
