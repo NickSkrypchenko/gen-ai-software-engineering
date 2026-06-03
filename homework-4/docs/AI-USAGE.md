@@ -97,6 +97,26 @@ isn't loaded by dotenv in test env (only src/index.ts imports dotenv/config).
 
 ---
 
+## Phase 4: Bug context files
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §5.6 (bug-context.md format), §5.3-5.5 (seeded issue details)
+
+**Prompt:** _(authoring phase — spec §5.6 consumed directly)_
+> Create 3 context/bugs/<ID>/bug-context.md files per spec §5.6 format:
+> Symptom, Reproduction, Suspected severity, Hint, Expected behavior.
+
+**Outcome:** accepted
+
+**What changed and why:**
+3 bug context files with full reproduction steps, severity ratings (CRITICAL/MEDIUM/HIGH),
+and hints pointing at exact file:function. These are the seed inputs to the pipeline —
+the Bug Researcher reads bug-context.md and explores src/ from there.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
