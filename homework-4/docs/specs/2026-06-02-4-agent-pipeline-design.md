@@ -13,25 +13,29 @@
 
 This document is the implementation contract for Homework 4. Claude Code is the implementation driver and consumes this spec as authoritative input to produce the deliverables required by `homework-4/TASKS.md` and the submission rules in the repository's top-level `README.md`.
 
-**In scope.** A 6-stage multi-agent pipeline built on `@anthropic-ai/sdk` Messages API: Bug Researcher → Bug Research Verifier → Bug Planner → Bug Fixer → (Security Verifier ‖ Unit Test Generator). 4 of these are the brief's required agents; Researcher and Planner are added to make the pipeline truly end-to-end autonomous. Each agent is defined in `agents/*.agent.md` with YAML frontmatter (model, tools, skills, role, justification) and markdown prompt body. Two skills required by brief (Task 1.2 research-quality, Task 4.2 FIRST principles) live in `skills/*.md`, injected into agent system prompts as `<skill name="...">` XML blocks. A small JWT verifier CLI in `src/` serves as the artifact being analyzed, with 3 seeded issues (1 logic bug, 2 security vulnerabilities). The pipeline is invoked via a single command (`npm run pipeline -- --bug <ID>`) per `context/bugs/<ID>/bug-context.md`. Tool registry implements 4 tools (Read, Grep, Edit, Write) with path-traversal protection and output capping. Tests cover orchestrator plumbing (~40 unit tests with mocked Anthropic SDK including multi-turn) plus baseline JWT app tests (5 tests, 3 failing pre-fix as observable before/after). Code review via `/codex:review`. No deployment — local CLI only.
+**In scope.** A 6-stage multi-agent pipeline built on **Claude Code CLI as runtime** (not direct Anthropic SDK calls): Bug Researcher → Bug Research Verifier → Bug Planner → Bug Fixer → (Security Verifier ‖ Unit Test Generator). 4 of these are the brief's required agents; Researcher and Planner are added to make the pipeline truly end-to-end autonomous. Each agent is defined in `agents/*.agent.md` with YAML frontmatter (model, tools, skills, role, justification) and markdown prompt body. Two skills required by brief (Task 1.2 research-quality, Task 4.2 FIRST principles) live in `skills/*.md`, injected into agent system prompts as `<skill name="...">` XML blocks. A small JWT verifier CLI in `src/` serves as the artifact being analyzed, with 3 seeded issues (1 logic bug, 2 security vulnerabilities). The pipeline is invoked via a single command (`npm run pipeline -- --bug <ID>`) per `context/bugs/<ID>/bug-context.md`. The orchestrator dispatches each agent stage via `claude -p` subprocess with `--model` and `--allowed-tools` flags; Claude Code handles the tool-use loop, retries, and 4 built-in tools (Read, Grep, Edit, Write) internally. Tests cover orchestrator plumbing (~30 unit tests with mocked subprocess) plus baseline JWT app tests (5 tests, 3 failing pre-fix as observable before/after). Code review via `/codex:review`. No deployment — local CLI only. **Runs on user's existing Claude Code subscription — no separate Anthropic API key required.**
 
-**Out of scope.** HTTP server for JWT verifier (CLI only); RS256/ES256 (HS256 only); real Anthropic E2E tests in CI (cost prohibitive — manual local runs only); cross-bug regression detection; streaming pipeline output; LLM-based skill auto-update (skills are hand-authored markdown); per-file coverage thresholds via Vitest (not supported — global threshold + manual review attention); pipeline-level deployment (local CLI only).
+**Out of scope.** HTTP server for JWT verifier (CLI only); RS256/ES256 (HS256 only); real Anthropic SDK orchestration with custom tool registry (replaced by Claude Code subprocess runtime — see §1); E2E tests in CI invoking real Claude Code (out of CI scope — manual local runs only); cross-bug regression detection; streaming pipeline output; LLM-based skill auto-update (skills are hand-authored markdown); per-file coverage thresholds via Vitest (not supported — global threshold + manual review attention); pipeline-level deployment (local CLI only).
 
-**Non-goals.** Production-grade agent reliability, formal pen-test of orchestrator, performance benchmarks for pipeline (LLM-bound by design), Claude Agent SDK as a separate orchestration library (no such package exists — built on Messages API directly).
+**Non-goals.** Production-grade agent reliability, formal pen-test of orchestrator, performance benchmarks for pipeline (LLM-bound by design), direct Anthropic SDK integration (the user has Claude Code; using it as runtime avoids API key setup and out-of-pocket cost).
 
 ---
 
 ## 1. Architectural approach
 
-**Approach A — Linear pipeline + file artifacts.** One Node.js process. CLI entry (`scripts/run-pipeline.ts`) dispatches 6 agents sequentially via Claude Agent SDK orchestrator (`scripts/pipeline/*`). Each agent reads previous outputs from `context/bugs/<ID>/` folder, writes its own. Parallelism only at the last stage (Security ‖ TestGen after Bug Fixer) per brief's mermaid diagram. Each `.agent.md` file is human-readable, editable, and self-contained. Each `context/bugs/<ID>/` folder is a self-contained record of one pipeline run — easy to inspect, debug, replay individual agents.
+**Approach A — Linear pipeline + file artifacts + Claude Code subprocess runtime.** One Node.js process. CLI entry (`scripts/run-pipeline.ts`) dispatches 6 agents sequentially by spawning `claude -p` subprocesses (Claude Code in non-interactive mode) with `--model` and `--allowed-tools` flags derived from each `agents/*.agent.md` frontmatter. Each agent reads previous outputs from `context/bugs/<ID>/` folder, writes its own. Parallelism only at the last stage (Security ‖ TestGen after Bug Fixer) per brief's mermaid diagram. Each `.agent.md` file is human-readable, editable, and self-contained.
 
-**No deployment.** Pipeline is a local CLI tool; artifacts live in the repo. Reviewer clones, installs deps, runs the pipeline once, inspects artifacts.
+**Why Claude Code runtime, not direct SDK.** The user already has Claude Code with model access via their existing subscription. Routing agent calls through `claude -p` subprocess:
+- Costs nothing beyond the existing subscription (no separate API key, no out-of-pocket per-run cost)
+- Delegates tool-use loop, retry logic, and 4 built-in tools (Read, Grep, Edit, Write) to Claude Code internally
+- Demonstrates Claude Code mastery, which is the course's overall focus
+- Trade-off accepted: ~2-5s subprocess startup per stage (vs ~100ms SDK), no fine-grained tool registry control. For 3 bug runs × 6 stages = +~1 minute total overhead — negligible.
 
-**TypeScript end-to-end** for orchestrator and sample app. Zod schemas validate agent frontmatter at startup (before any API call); Zod-derived `MODELS` and `TOOLS` enums catch typos at compile time. `gray-matter` parses frontmatter.
+**No deployment.** Pipeline is a local CLI tool; artifacts live in the repo. Reviewer clones, installs deps + Claude Code, authenticates Claude Code, runs the pipeline once, inspects artifacts.
 
-**Built on `@anthropic-ai/sdk` Messages API directly.** No separate "Claude Agent SDK" library exists. The orchestrator implements the tool-use loop (assistant `tool_use` → orchestrator executes tool → user `tool_result` → continue) explicitly. MAX_TURNS=20 hard cap prevents agent loops.
+**TypeScript end-to-end** for orchestrator and sample app. Zod schemas validate agent frontmatter at startup (before any subprocess spawn); Zod-derived `MODELS` and `TOOLS` enums catch typos at compile time. `gray-matter` parses frontmatter.
 
-**File-artifact-driven communication between agents.** Orchestrator passes context through file paths + parsed content via XML-style `<bug-context>`, `<verified-research>`, `<changed-file name="...">` tags in user messages. No shared mutable state.
+**File-artifact-driven communication between agents.** Orchestrator passes context through file paths + parsed content via XML-style `<bug-context>`, `<verified-research>`, `<changed-file name="...">` tags in the user-message text streamed to `claude -p`. No shared mutable state.
 
 ---
 
@@ -58,9 +62,8 @@ homework-4/
 │   └── pipeline/
 │       ├── agent-loader.ts              # ~50 LOC
 │       ├── skill-loader.ts              # ~30 LOC
-│       ├── validators.ts                # ~20 LOC
-│       ├── tool-registry.ts             # ~150 LOC — centerpiece
-│       ├── claude-runner.ts             # ~80 LOC
+│       ├── validators.ts                # ~25 LOC (cross-ref + system deps incl. claude CLI presence)
+│       ├── claude-runner.ts             # ~60 LOC — spawns `claude -p` subprocess per stage
 │       ├── stages.ts                    # ~120 LOC
 │       ├── messages.ts                  # ~10 LOC
 │       ├── logger.ts                    # pino, ~15 LOC
@@ -70,7 +73,7 @@ homework-4/
 │   ├── index.ts                         # CLI entry
 │   ├── jwt/
 │   │   ├── verifier.ts                  # Bug 001 lives here (alg=none bypass)
-│   │   ├── decoder.ts                   # raw + parsed shape per §4.7
+│   │   ├── decoder.ts                   # raw + parsed shape per §5.7
 │   │   ├── signature.ts                 # Bug 003 lives here (=== compare)
 │   │   └── claims.ts                    # Bug 002 lives here (off-by-one exp)
 │   └── types.ts                         # Token, Header, Claims, VerifyResult
@@ -83,20 +86,19 @@ homework-4/
 │   │   ├── alg-none-token.txt
 │   │   └── expired-token.txt
 │   ├── jwt-verifier/                    # populated by Test Generator at Phase 10
-│   └── pipeline/                        # orchestrator unit tests (~40)
+│   └── pipeline/                        # orchestrator unit tests (~30)
 │       ├── agent-loader.test.ts
 │       ├── skill-loader.test.ts
 │       ├── validators.test.ts
-│       ├── tool-registry.test.ts
-│       ├── claude-runner.test.ts
+│       ├── claude-runner.test.ts        # mocks child_process subprocess
 │       ├── stages.test.ts
 │       ├── messages.test.ts
 │       ├── _setup/
-│       │   └── mock-anthropic.ts        # Message[][] sequence mock
+│       │   └── mock-subprocess.ts       # mocks execFile/spawn for `claude` CLI
 │       └── fixtures/
 │           ├── agents/                  # valid + invalid agent.md files
 │           ├── skills/                  # valid + missing-section skills
-│           └── mock-responses/          # canned Anthropic responses
+│           └── mock-responses/          # canned `claude -p` stdout per agent
 │
 ├── context/
 │   └── bugs/
@@ -124,7 +126,7 @@ homework-4/
         └── *.png (~12-15 shots)
 ```
 
-**Total: ~500 LOC orchestrator + ~250 LOC sample app + ~55 tests.**
+**Total: ~330 LOC orchestrator (down from ~500 because tool registry moved to Claude Code) + ~250 LOC sample app + ~45 tests.**
 
 ---
 
@@ -215,12 +217,12 @@ After Bug Fixer + `npm test` run, orchestrator dispatches Security Verifier and 
 
 | Failure | Where caught | What happens |
 |---|---|---|
-| Anthropic 429 | `withRetry` in claude-runner | Exponential backoff with jitter, 3 retries, cap 30s |
-| Anthropic 5xx | `withRetry` | Same as 429 |
-| Tool execution error | `executeOneTool` | Return `tool_result` with `is_error: true`; agent gets error message and decides next step |
-| Agent loops in tools | `runAgent` MAX_TURNS=20 | Hard fail with stage error |
-| Agent returns empty | `extractText` | Hard fail |
-| Frontmatter Zod fail | `loadAllAgents` at startup | Exit code 2, before any API call |
+| `claude` CLI not on PATH | `claude-runner` ENOENT | Friendly error with install URL; exit 2 at first subprocess spawn |
+| `claude -p` non-zero exit | `claude-runner` | Throw with stderr captured; failed stage in `failures[]` |
+| Subprocess exceeds 5min timeout | `claude-runner` SIGTERM handler | Throw timeout error; stage marked failed |
+| Subprocess returns empty stdout | `claude-runner` empty check | Throw — agent produced no output |
+| Tool errors inside Claude Code | Claude Code internal | Handled by CC's own loop; we don't see them unless they cause non-zero exit |
+| Frontmatter Zod fail | `loadAllAgents` at startup | Exit code 2, before any subprocess spawn |
 | Skill ref broken | `validateAgentSkillRefs` at startup | Exit code 2 |
 | Stages 1-4 throw | sequential propagation | Stop pipeline immediately |
 | Stages 5 or 6 throw | `Promise.allSettled` | Other stage still completes; failed name in failures[] |
@@ -302,7 +304,7 @@ The skill is **injected into the agent's system prompt** as `<skill name="...">`
 | Letter | Principle | Concrete check |
 |---|---|---|
 | **F** | Fast | <100ms. No network. No real timers (use `vi.useFakeTimers()`). No real fs (use `tmp` or mocked fs). |
-| **I** | Independent | Test passes regardless of execution order. No shared state. `beforeEach` resets. **`vi.useFakeTimers()` MUST be paired with `vi.useRealTimers()` in afterEach** (worked example: see §6.1). |
+| **I** | Independent | Test passes regardless of execution order. No shared state. `beforeEach` resets. **`vi.useFakeTimers()` MUST be paired with `vi.useRealTimers()` in afterEach** (worked example: see §7.1). |
 | **R** | Repeatable | Same input, same result, on any machine, in any timezone. No `Date.now()` without injection. No randomness without seed. |
 | **S** | Self-validating | Test passes/fails on its own. Single assertion per test (or tightly grouped on one behavior). No "check console output." |
 | **T** | Timely | Tests written alongside the change, scoped to changed code only. |
@@ -527,7 +529,7 @@ if (!values.bug) {
 }
 
 async function main() {
-  checkSystemDependencies();                                // rg, git, npx — exit 2 if missing
+  checkSystemDependencies();                                // claude, git, npx — exit 2 if missing
   const agents = await loadAllAgents('agents/');            // Zod-validated; exit 2 on fail
   const skills = await loadAllSkills('skills/');
   validateAgentSkillRefs(agents, skills);                   // exit 2 on broken refs
@@ -546,208 +548,100 @@ async function main() {
 main().catch(err => { logger.error('Pipeline failed', err); process.exit(2); });
 ```
 
-### 6.3 Tool registry (centerpiece) — `pipeline/tool-registry.ts`
+### 6.3 Claude Code subprocess — no custom tool registry
+
+**Key architectural choice:** instead of implementing a custom tool registry + tool-use loop on `@anthropic-ai/sdk` Messages API, the orchestrator delegates this to Claude Code by spawning `claude -p` subprocess per agent stage. Claude Code internally handles:
+
+- The full tool-use loop (assistant tool_use → executes tool → tool_result → continue → end_turn)
+- Built-in tools: Read, Grep, Edit, Write, Bash, WebFetch, etc.
+- Retries on rate limits and transient errors
+- Model selection via `--model <id>` flag
+- Tool authorization via `--allowed-tools <comma-list>` flag
+
+Our orchestrator's only responsibility for each stage:
+1. Build system prompt from agent prompt body + injected skills
+2. Build user message with XML-tagged context (`<bug-context>...</bug-context>`)
+3. Spawn `claude -p` subprocess with `--model`, `--allowed-tools`, `--append-system-prompt`
+4. Capture stdout (the agent's final markdown response)
+5. Write to artifact file
+
+**Frontmatter `tools: [Read, Grep, Edit, Write]` maps directly to Claude Code's `--allowed-tools` flag.** Tool names are identical (the brief and Claude Code use the same names).
+
+**Why this is safer than custom registry:**
+- Path traversal protection is built into Claude Code's tools — we don't reinvent `resolveSafe`.
+- Output capping is Claude Code's responsibility — we don't track 50 KB cuts.
+- Edit's "one occurrence" constraint is Claude Code's behavior — we inherit it.
+- ripgrep availability is Claude Code's concern (it bundles or shells out as it sees fit).
+
+**What we lose:** fine-grained control over tool behavior (e.g., we can't customize Grep output format), and we depend on Claude Code being installed and authenticated. For homework scope, both are acceptable trade-offs.
+
+### 6.4 Claude runner — subprocess wrapper (`pipeline/claude-runner.ts`)
 
 ```ts
-import type Anthropic from '@anthropic-ai/sdk';
-import { execFileSync } from 'node:child_process';
-import { resolve, relative, isAbsolute, dirname } from 'node:path';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+const execFileAsync = promisify(execFile);
 
-const REPO_ROOT = process.cwd();
-const MAX_OUTPUT = 50_000;
-
-function resolveSafe(rel: string): string {
-  if (isAbsolute(rel)) throw new Error(`Absolute paths forbidden: ${rel}`);
-  const absolute = resolve(REPO_ROOT, rel);
-  const relativeToRoot = relative(REPO_ROOT, absolute);
-  if (relativeToRoot.startsWith('..')) throw new Error(`Path escapes repo root: ${rel}`);
-  return absolute;
-}
-
-function truncate(s: string): string {
-  return s.length <= MAX_OUTPUT ? s : s.slice(0, MAX_OUTPUT) + `\n\n[truncated ${s.length - MAX_OUTPUT} chars]`;
-}
-
-export const TOOL_REGISTRY = {
-  Read: {
-    definition: {
-      name: 'Read',
-      description: 'Read a file from the repo. Path must be relative to repo root. Truncated at 50 KB.',
-      input_schema: {
-        type: 'object',
-        properties: { path: { type: 'string' } },
-        required: ['path'],
-      },
-    },
-    execute: async ({ path }: { path: string }) => {
-      const safe = resolveSafe(path);
-      if (!existsSync(safe)) throw new Error(`File not found: ${path}`);
-      return truncate(readFileSync(safe, 'utf-8'));
-    },
-  },
-
-  Grep: {
-    definition: {
-      name: 'Grep',
-      description: 'Search files for a regex pattern (ripgrep). Returns "file:line:content". Path defaults to src/.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          pattern: { type: 'string' },
-          path:    { type: 'string' },
-          glob:    { type: 'string' },
-        },
-        required: ['pattern'],
-      },
-    },
-    execute: async ({ pattern, path = 'src/', glob }: any) => {
-      const safe = resolveSafe(path);
-      const args = ['--no-heading', '-n', '--color=never', pattern, safe];
-      if (glob) args.push('--glob', glob);
-      try {
-        return truncate(execFileSync('rg', args, { encoding: 'utf-8' }));
-      } catch (e: any) {
-        if (e.code === 'ENOENT') {
-          throw new Error('ripgrep (rg) not installed. Install: `brew install ripgrep` (mac) or `apt install ripgrep` (linux). See HOWTORUN.md.');
-        }
-        if (e.status === 1) return '(no matches)';
-        throw e;
-      }
-    },
-  },
-
-  Edit: {
-    definition: {
-      name: 'Edit',
-      description: 'Replace exact text in a file. old_str must match exactly once.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          path:    { type: 'string' },
-          old_str: { type: 'string' },
-          new_str: { type: 'string' },
-        },
-        required: ['path', 'old_str', 'new_str'],
-      },
-    },
-    execute: async ({ path, old_str, new_str }: any) => {
-      const safe = resolveSafe(path);
-      if (!existsSync(safe)) throw new Error(`File not found: ${path}`);
-      const content = readFileSync(safe, 'utf-8');
-      const occurrences = content.split(old_str).length - 1;
-      if (occurrences === 0) throw new Error(`old_str not found in ${path}`);
-      if (occurrences > 1)  throw new Error(`old_str matches ${occurrences} times in ${path}; provide more context`);
-      writeFileSync(safe, content.replace(old_str, new_str), 'utf-8');
-      return `Edited ${path}: 1 replacement`;
-    },
-  },
-
-  Write: {
-    definition: {
-      name: 'Write',
-      description: 'Write a new file or overwrite existing. Creates parent dirs.',
-      input_schema: {
-        type: 'object',
-        properties: {
-          path:    { type: 'string' },
-          content: { type: 'string' },
-        },
-        required: ['path', 'content'],
-      },
-    },
-    execute: async ({ path, content }: any) => {
-      const safe = resolveSafe(path);
-      mkdirSync(dirname(safe), { recursive: true });
-      writeFileSync(safe, content, 'utf-8');
-      return `Wrote ${path} (${content.length} bytes)`;
-    },
-  },
-} as const;
-
-export function resolveTools(toolNames: string[]): Anthropic.Tool[] {
-  return toolNames.map(n => {
-    const entry = TOOL_REGISTRY[n as keyof typeof TOOL_REGISTRY];
-    if (!entry) throw new Error(`Unknown tool: ${n}`);
-    return entry.definition as Anthropic.Tool;
-  });
-}
-```
-
-### 6.4 Claude runner — tool-use loop (`pipeline/claude-runner.ts`)
-
-```ts
-import Anthropic from '@anthropic-ai/sdk';
-
-const MAX_TURNS = 20;
+const SUBPROCESS_TIMEOUT_MS = 5 * 60 * 1000;     // 5 minutes hard cap per agent stage
 
 export async function runAgent(
   spec: AgentSpec,
   skills: Map<string, string>,
   userMessage: string,
-): Promise<{ text: string; turns: number; usage: { input_tokens: number; output_tokens: number } }> {
-  const anthropic = new Anthropic();
-  const systemPrompt = buildSystemPrompt(spec, skills);
-  const tools = resolveTools(spec.tools);
+): Promise<{ text: string; durationMs: number }> {
+  const systemPrompt = buildSystemPrompt(spec, skills);     // agent prompt + injected <skill> blocks
 
-  let messages: Anthropic.MessageParam[] = [{ role: 'user', content: userMessage }];
-  let totalUsage = { input_tokens: 0, output_tokens: 0 };
+  const args = [
+    '-p',                                                    // non-interactive print mode
+    '--model', spec.model,
+    '--append-system-prompt', systemPrompt,
+    '--allowed-tools', spec.tools.join(','),                 // [Read,Grep] → "Read,Grep"
+    // userMessage passed via stdin to handle long content without arg length limits
+  ];
 
-  for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const resp = await withRetry(() => anthropic.messages.create({
-      model: spec.model,
-      max_tokens: spec.max_tokens,
-      system: systemPrompt,
-      tools,
-      messages,
-    }));
-
-    totalUsage.input_tokens  += resp.usage.input_tokens;
-    totalUsage.output_tokens += resp.usage.output_tokens;
-
-    if (resp.stop_reason === 'end_turn') {
-      return { text: extractText(resp), turns: turn + 1, usage: totalUsage };
-    }
-    if (resp.stop_reason === 'tool_use') {
-      const toolUses = resp.content.filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
-      const toolResults = await Promise.all(toolUses.map(executeOneTool));
-      messages = [
-        ...messages,
-        { role: 'assistant', content: resp.content },
-        { role: 'user', content: toolResults },
-      ];
-      continue;
-    }
-    throw new Error(`Unexpected stop_reason: ${resp.stop_reason}`);
-  }
-  throw new Error(`Agent ${spec.name} exceeded MAX_TURNS (${MAX_TURNS}) without end_turn`);
-}
-
-async function executeOneTool(use: Anthropic.ToolUseBlock): Promise<Anthropic.ToolResultBlockParam> {
-  const entry = TOOL_REGISTRY[use.name as keyof typeof TOOL_REGISTRY];
+  const start = Date.now();
   try {
-    const result = await entry.execute(use.input as any);
-    return { type: 'tool_result', tool_use_id: use.id, content: result, is_error: false };
-  } catch (err: any) {
-    return { type: 'tool_result', tool_use_id: use.id, content: err.message, is_error: true };
+    const { stdout } = await execFileAsync('claude', args, {
+      input: userMessage,
+      encoding: 'utf-8',
+      timeout: SUBPROCESS_TIMEOUT_MS,
+      maxBuffer: 10 * 1024 * 1024,                           // 10 MB output cap
+    });
+    const durationMs = Date.now() - start;
+    const text = stdout.trim();
+    if (!text) throw new Error(`Agent ${spec.name} returned empty output`);
+    return { text, durationMs };
+  } catch (e: any) {
+    if (e.code === 'ENOENT') {
+      throw new Error('claude CLI not found. Install Claude Code: https://docs.anthropic.com/claude-code. See HOWTORUN.md.');
+    }
+    if (e.killed && e.signal === 'SIGTERM') {
+      throw new Error(`Agent ${spec.name} exceeded ${SUBPROCESS_TIMEOUT_MS / 1000}s timeout`);
+    }
+    throw new Error(`Agent ${spec.name} failed: ${e.message}\n${e.stderr ?? ''}`);
   }
 }
 
-async function withRetry<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
-  for (let i = 0; i <= retries; i++) {
-    try { return await fn(); }
-    catch (e: any) {
-      if ((e.status === 429 || (e.status >= 500 && e.status < 600)) && i < retries) {
-        const delay = Math.min(1000 * 2 ** i + Math.random() * 1000, 30_000);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error('unreachable');
+export function buildSystemPrompt(agent: AgentSpec, skills: Map<string, string>): string {
+  const skillBlocks = agent.skills
+    .map(id => {
+      const content = skills.get(id);
+      if (!content) throw new Error(`Agent ${agent.name} references unknown skill: ${id}`);
+      return `\n\n<skill name="${id}">\n${content}\n</skill>\n\n`;
+    })
+    .join('');
+  return agent.prompt + skillBlocks;
 }
 ```
+
+**Down from ~80 LOC (tool-use loop + retry + executeOneTool) to ~40 LOC.** Claude Code does the heavy lifting.
+
+**Subprocess details:**
+- `--append-system-prompt` (not `--system-prompt`) — preserves Claude Code's default system prompt + adds ours. We DO want CC's default behavior around tool usage, just with our agent-specific instructions appended.
+- User message via stdin — agent prompts + injected skill blocks can exceed shell arg length limits (~128 KB on most systems). Stdin has no such cap.
+- Timeout 5 minutes per agent stage — generous (longest stage Bug Fixer may take 2-3 min with multi-tool-use). On SIGTERM, throw clear timeout error.
+- maxBuffer 10 MB — Claude Code's final markdown response is rarely > 50 KB but we leave headroom.
+- ENOENT → friendly install error (mirror of HW spec's ripgrep handling).
 
 ### 6.5 Stages — `pipeline/stages.ts`
 
@@ -867,16 +761,15 @@ XML-style structural delimiters throughout — agents see typed context: `<bug-c
 scripts/pipeline/
 ├── agent-loader.ts          # ~50 LOC
 ├── skill-loader.ts          # ~30 LOC
-├── validators.ts            # ~20 LOC (cross-ref + system deps)
-├── tool-registry.ts         # ~150 LOC (centerpiece)
-├── claude-runner.ts         # ~80 LOC
+├── validators.ts            # ~25 LOC (cross-ref + system deps incl. `claude` CLI presence)
+├── claude-runner.ts         # ~40 LOC (subprocess wrapper)
 ├── stages.ts                # ~120 LOC
 ├── messages.ts              # ~10 LOC
 ├── logger.ts                # ~15 LOC
 └── types.ts                 # shared types
 ```
 
-Total: ~500 LOC orchestrator.
+Total: ~290 LOC orchestrator (down from ~500 because tool-use loop + tool registry + retry logic moved to Claude Code).
 
 ---
 
@@ -931,41 +824,69 @@ Test Generator (Phase 10 of OUR build, via real agent run) adds files to `tests/
 
 ### 7.2 Layer 2 — Orchestrator unit tests (`tests/pipeline/`)
 
-~40 tests covering ~500 LOC orchestrator. Anthropic SDK mocked.
+~30 tests covering ~330 LOC orchestrator. `child_process` subprocess mocked (Claude Code CLI not actually invoked in tests).
 
 ```
 tests/pipeline/
 ├── agent-loader.test.ts         (8 tests)
 ├── skill-loader.test.ts         (4 tests)
-├── validators.test.ts           (3 tests)
-├── tool-registry.test.ts        (12 tests — 3 per tool)
-├── claude-runner.test.ts        (6 tests — incl. multi-turn)
+├── validators.test.ts           (3 tests — incl. claude CLI presence check)
+├── claude-runner.test.ts        (6 tests — incl. subprocess mock, ENOENT, timeout)
 ├── stages.test.ts               (4 tests — incl. allSettled isolation)
 ├── messages.test.ts             (2 tests)
-└── _setup/mock-anthropic.ts     # Message[][] sequence mock
+└── _setup/mock-subprocess.ts    # mocks execFile for `claude` CLI per agent invocation
 ```
 
-**Mock structure for multi-turn agents:**
+**Mock structure for Claude Code subprocess:**
+
+Since Claude Code handles the tool-use loop internally, our mock is **single-response per agent invocation** (much simpler than the previous Message[][] multi-turn sequence):
 
 ```ts
-export function mockAnthropic(invocationSequences: Anthropic.Message[][]) {
-  let invocationIdx = 0, turnIdx = 0;
-  return vi.mocked(Anthropic).mockImplementation(() => ({
-    messages: {
-      create: vi.fn(async () => {
-        const sequence = invocationSequences[invocationIdx];
-        const response = sequence[turnIdx++];
-        if (response.stop_reason === 'end_turn') {
-          invocationIdx++; turnIdx = 0;
-        }
-        return response;
-      }),
-    },
-  } as any));
+// tests/pipeline/_setup/mock-subprocess.ts
+import { vi } from 'vitest';
+
+export function mockClaudeSubprocess(responsesByInvocation: string[]) {
+  let invocationIdx = 0;
+  return vi.mock('node:child_process', () => ({
+    execFile: vi.fn((cmd, args, opts, callback) => {
+      if (cmd !== 'claude') {
+        // fall through to real execFile for `git`, `npx`, etc.
+        return realExecFile(cmd, args, opts, callback);
+      }
+      if (invocationIdx >= responsesByInvocation.length) {
+        callback(new Error(`mock-subprocess: no more responses queued (${invocationIdx})`));
+        return;
+      }
+      const stdout = responsesByInvocation[invocationIdx++];
+      // mimic execFile signature: (err, stdout, stderr)
+      callback(null, stdout, '');
+    }),
+  }));
 }
 ```
 
-Bug Fixer is multi-turn (Edit tool use → end_turn): sequence is `[toolUseResponse(...), endTurnResponse(...)]`. Other agents single-turn: `[endTurnResponse(...)]`.
+**Usage in stages.test.ts:**
+
+```ts
+test('full pipeline writes all 6 artifacts', async () => {
+  mockClaudeSubprocess([
+    '# Codebase Research\n...',                  // Stage 1 → researcher
+    '# Verified Research\nLevel: L3 Solid\n...', // Stage 2 → research-verifier
+    '# Implementation Plan\n...',                 // Stage 3 → planner
+    '# Fix Summary\nApplied 1 edit to verifier.ts', // Stage 4 → bug-fixer (CC applied Edit internally)
+    '# Security Report\nNo critical issues.',    // Stage 5 → security-verifier
+    '# Test Report\nGenerated 3 tests.',         // Stage 6 → unit-test-generator (CC applied Write internally)
+  ]);
+
+  await runStages({ bugId: '001-test', agents, skills, bugDir });
+
+  expect(existsSync('context/bugs/001-test/research/codebase-research.md')).toBe(true);
+  expect(existsSync('context/bugs/001-test/research/verified-research.md')).toBe(true);
+  // ... etc.
+});
+```
+
+**Important caveat:** since Claude Code handles tool execution internally, mocked subprocess tests DON'T verify that Bug Fixer's Edit tool actually modified `src/jwt/verifier.ts`. That kind of verification only happens in Phase 10 manual E2E run with the real Claude Code subprocess. Layer 2 tests verify only orchestrator plumbing: subprocess spawn args, output capture, file writing, sequential vs allSettled flow, ENOENT handling, timeout handling.
 
 ### 7.3 Coverage thresholds
 
@@ -980,15 +901,22 @@ coverage: {
     functions:  85,
     statements: 85,
   },
-  exclude: ['**/*.test.ts', 'tests/**', 'src/index.ts', 'scripts/seed-bugs.ts', 'scripts/generate-fixtures.ts'],
+  exclude: [
+    '**/*.test.ts',
+    'tests/**',
+    'src/index.ts',
+    'scripts/run-pipeline.ts',              // thin entry point with process.exit() — covered indirectly via stages.test.ts
+    'scripts/seed-bugs.ts',
+    'scripts/generate-fixtures.ts',
+  ],
 }
 ```
 
-Vitest does not support per-path-pattern thresholds. Safety/correctness-critical files (`tool-registry.ts`, `claude-runner.ts`, `src/jwt/signature.ts`) are documented in TESTING_GUIDE-style README section as requiring extra review attention, aim for ≥95% coverage there manually.
+Vitest does not support per-path-pattern thresholds. Safety/correctness-critical files (`claude-runner.ts`, `stages.ts`, `src/jwt/signature.ts`) are documented in README section as requiring extra review attention, aim for ≥95% coverage there manually.
 
-### 7.4 No E2E with real Anthropic in CI
+### 7.4 No E2E with real Claude Code in CI
 
-CI runs Layer 1 + Layer 2 with mocked SDK. Phase 10 (manual local) runs real Anthropic on 3 bugs to produce demo artifacts. Cost estimate: ~$15 total for all 3 bug runs (based on ~50K tokens × 6 agents × $0.015/$0.075 input/output per 1M for Sonnet + Opus mix).
+CI runs Layer 1 + Layer 2 with mocked subprocess. Phase 10 (manual local) runs real Claude Code on 3 bugs to produce demo artifacts. **Cost: $0** (uses developer's existing Claude Code subscription, not a separate API key). Wall-time estimate: ~5-10 minutes per bug run (~30 minutes total for 3 bugs); much of this is Claude Code's internal LLM latency.
 
 ### 7.5 Fixture generation
 
@@ -1008,9 +936,9 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 ### 7.6 What we don't test
 
 - **Agent output quality** — manual review territory. Quality of `verified-research.md` or `security-report.md` is evaluated by human, not unit test.
-- **Real Anthropic responses** — mocked in CI.
-- **Performance** — orchestrator overhead trivial (<100ms per stage outside API calls).
-- **Formal pen-test of orchestrator** — `resolveSafe` tested for path traversal but no formal audit.
+- **Real Claude Code subprocess behavior** — mocked in CI.
+- **Claude Code's built-in tool correctness** — we delegate Read/Grep/Edit/Write to Claude Code and trust their implementation. (HW1/HW2 did test our custom registry — here we don't have one.)
+- **Performance** — orchestrator overhead trivial (~50ms per subprocess spawn + subprocess startup ~2-5s outside our control).
 - **CI workflow** — homework doesn't require GitHub Actions. Future work bullet.
 
 ### 7.7 Test counts
@@ -1019,8 +947,8 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 |---|---|---|
 | 1 — JWT verifier baseline | 1 + 1 fixtures | 5 (3 failing pre-fix) |
 | 1 — Generated per bug (Phase 10) | 3 | ~9-15 (Test Gen decides) |
-| 2 — Orchestrator units | 7 | ~40 |
-| **Total** | **12** | **~55-60** |
+| 2 — Orchestrator units | 6 | ~30 |
+| **Total** | **11** | **~45-50** |
 
 ---
 
@@ -1035,12 +963,12 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 | 2 | Sample JWT app | Spec §5 + 3 seeded-bug specs | Sonnet 4.6 | `src/jwt/*`, `src/index.ts`, types |
 | 3 | Baseline tests + fixtures | Spec §7.1, §7.5 | Sonnet 4.6 | 5 baseline tests + jwt-fixtures.ts + generate-fixtures.ts |
 | 4 | Bug context files | Spec §5.6 | Sonnet 4.6 | 3 files in context/bugs/<ID>/ |
-| 5 | Tool registry | Spec §6.3 — centerpiece | Sonnet 4.6 | ~150 LOC + 12 unit tests |
-| 6 | Loaders + validators | Spec §3.2, §4.5 | Sonnet 4.6 | 3 small modules + unit tests |
-| 7 | Claude runner + messages | Spec §6.4, §6.6 | Sonnet 4.6 | Tool-use loop + multi-turn mocked tests |
-| 8 | Stages + run-pipeline entry | Spec §6.2, §6.5 | Sonnet 4.6 | Sequential + allSettled-parallel |
+| 5 | Loaders + validators | Spec §3.2, §4.5 | Sonnet 4.6 | agent-loader, skill-loader, validators + unit tests |
+| 6 | Claude runner (subprocess wrapper) + messages | Spec §6.4, §6.6 | Sonnet 4.6 | ~40 LOC subprocess wrapper + 6 unit tests (with mocked execFile) |
+| 7 | Stages | Spec §6.5 | Sonnet 4.6 | Sequential 1-4 + allSettled 5-6 + unit tests |
+| 8 | Run-pipeline entry | Spec §6.2 | Sonnet 4.6 | CLI argv parsing, startup validation, integrates phases 5-7 |
 | 9 | 6 agents (.agent.md) | Spec §3 per-agent contract | Sonnet 4.6 | 6 markdown files with frontmatter + prompts |
-| 10 | E2E manual pipeline run | Built pipeline + 3 bugs | Mixed (live agents use assigned Opus 4.8 / Sonnet 4.6) | `npm run pipeline -- --bug <ID>` × 3 |
+| 10 | E2E manual pipeline run | Built pipeline + 3 bugs | Mixed (Claude Code subprocess uses each agent's assigned Opus 4.8 / Sonnet 4.6 via `--model` flag) | `npm run pipeline -- --bug <ID>` × 3, runs against developer's Claude Code subscription |
 | 11 | Code review | Branch diff + review-brief.md | **/codex:review** | Skill invocation |
 | 12 | README + agent justifications | Spec + final repo | **claude-opus-4-8** | Opus for per-agent model justification section (brief's showcase) |
 | 12 | HOWTORUN | Spec + final scripts | claude-sonnet-4-6 | Cold-start runbook |
@@ -1054,17 +982,17 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 
 | # | Phase | Inputs | Outputs | Exit criteria |
 |---|---|---|---|---|
-| 0 | Scaffold | This spec | `package.json` (deps: @anthropic-ai/sdk, vitest, gray-matter, zod, dotenv, pino, tsx), `tsconfig.json`, folder skeleton, `.gitignore`, `.env.example` | `tsx scripts/run-pipeline.ts --bug nonexistent` exits 2 with `Bug not found: ...` message |
+| 0 | Scaffold | This spec | `package.json` (deps: vitest, gray-matter, zod, dotenv, pino, tsx — **no @anthropic-ai/sdk**, runtime is `claude` CLI subprocess), `tsconfig.json`, folder skeleton, `.gitignore`, `.env.example` | `tsx scripts/run-pipeline.ts --bug nonexistent` exits 2 with `Bug not found: ...` message |
 | 1 | Skills | Spec §4 | `skills/research-quality-measurement.md`, `skills/unit-tests-FIRST.md` | Both pass `validateSkillStructure` |
 | 2 | Sample JWT app | Spec §5 | `src/jwt/{verifier,decoder,signature,claims}.ts`, `src/types.ts`, `src/index.ts` (CLI) | `npm run cli -- verify <valid-token>` returns `{valid: true}`; 3 seeded bugs in code exactly per spec |
 | 3 | Baseline tests + fixtures | Spec §7.1, §7.5 | `tests/jwt-verifier.test.ts`, `tests/jwt-fixtures.ts`, `tests/fixtures/{valid,alg-none,expired}-token.txt` | `npm test` → 3 failing, 2 passing; fixture files exist and contain valid base64url tokens |
 | 4 | Bug context files | Spec §5.6 | `context/bugs/{001,002,003}/bug-context.md` | 3 files with required sections |
-| 5 | Tool registry | Spec §6.3 | `scripts/pipeline/tool-registry.ts` + `tests/pipeline/tool-registry.test.ts` | 12 tests green; resolveSafe blocks path traversal |
-| 6 | Loaders + validators | Spec §3.2, §4.5 | `agent-loader.ts`, `skill-loader.ts`, `validators.ts` + unit tests | Loaders parse fixtures correctly (valid + invalid) |
-| 7 | Claude runner + messages | Spec §6.4, §6.6 | `claude-runner.ts`, `messages.ts` + tests | Tool-use loop tests pass with mocked Anthropic (incl. multi-turn) |
-| 8 | Stages + entry | Spec §6.2, §6.5 | `stages.ts`, `run-pipeline.ts` + tests | Full happy-path test passes; allSettled isolation verified |
+| 5 | Loaders + validators | Spec §3.2, §4.5 | `agent-loader.ts`, `skill-loader.ts`, `validators.ts` + unit tests | Loaders parse fixtures correctly (valid + invalid); validators detect missing `claude` CLI at startup |
+| 6 | Claude runner (subprocess wrapper) + messages | Spec §6.4, §6.6 | `claude-runner.ts` (~40 LOC), `messages.ts` + tests | Subprocess mock tests pass: spawn args correct, stdout captured, ENOENT friendly error, timeout handled |
+| 7 | Stages | Spec §6.5 | `stages.ts` + tests | Sequential 1-4 stop on throw; parallel 5-6 use allSettled isolation; orchestrator runs tests deterministically |
+| 8 | Run-pipeline entry | Spec §6.2 | `run-pipeline.ts` + smoke test | `--bug nonexistent` exits 2 with clear error; full happy-path with mocked subprocess writes all artifacts |
 | 9 | 6 agents | Spec §3 | `agents/{researcher,research-verifier,planner,bug-fixer,security-verifier,unit-test-generator}.agent.md` | All 6 load without Zod errors; cross-ref valid |
-| 10 | E2E manual run | Phases 0-9 + ANTHROPIC_API_KEY | `context/bugs/<ID>/research/*.md`, `*-report.md`, applied fixes, generated tests — all 3 bugs | All 3 runs exit 0; final `npm test` → 5+ passing, 0 failing; demo artifacts committed |
+| 10 | E2E manual run | Phases 0-9 + authenticated Claude Code CLI | `context/bugs/<ID>/research/*.md`, `*-report.md`, applied fixes, generated tests — all 3 bugs | All 3 runs exit 0; final `npm test` → 5+ passing, 0 failing; demo artifacts committed. **No separate API key required — uses developer's Claude Code subscription.** |
 | 11 | Code review | Branch diff + `docs/specs/review-brief.md` | `docs/reviews/codex-review-<date>.md` | All `[BLOCKING]` findings addressed or waived |
 | 12 | README + HOWTORUN | Spec + final repo | `README.md` (incl. per-agent model justification table), `HOWTORUN.md` (incl. ripgrep prerequisite) | Brief's required sections all present |
 | 13 | Screenshots | Pipeline runs + final code | `docs/screenshots/*.png` (~12-15) | All brief-required screenshots present |
@@ -1077,7 +1005,7 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 - **Phase 1 blocks Phase 9** — agent frontmatter references skills; cross-ref validator fails if skill missing.
 - **Phase 2 blocks Phase 3** — tests need `src/` to import.
 - **Phase 4 blocks Phase 10** — pipeline reads `bug-context.md`.
-- **Phases 5-8 are linear** — tool-registry → loaders → runner → stages.
+- **Phases 5-8 are linear** — loaders → claude-runner (subprocess wrapper) → stages → entry CLI.
 - **Phase 9 blocks Phase 10** — pipeline loads agents at startup.
 - **Phase 10 blocks Phase 11** — review wants to see full picture.
 - **Phase 11 blocks Phase 12** — docs describe post-review state.
@@ -1086,15 +1014,15 @@ Run once via `npm run fixtures:gen` at Phase 3. Outputs committed.
 ### 8.4 `/codex:review` brief (`docs/specs/review-brief.md`)
 
 > Review the `homework-4-submission` branch diff vs `main`. Focus on:
-> 1. **Tool registry safety** — `scripts/pipeline/tool-registry.ts`. `resolveSafe` blocks path traversal? Absolute paths rejected? Output capping (50 KB) applied?
-> 2. **Tool-use loop correctness** — `claude-runner.ts`. Loop accumulates messages correctly? MAX_TURNS=20 hard fail explicit?
-> 3. **Parallel stages isolation** — `stages.ts`. Security + TestGen via allSettled, not all? TestGen failure leaves no half-written test files?
-> 4. **Frontmatter validation strictness** — `agent-loader.ts`. Zod rejects all malformed inputs (bad model, missing required, kebab-case, unknown tool)?
-> 5. **Agent prompts hygiene** — `agents/*.agent.md`. Each prompt references its skills explicitly? model_justification specific?
+> 1. **Subprocess wrapper safety** — `scripts/pipeline/claude-runner.ts`. Does `execFile('claude', args)` properly handle stdin for long user messages (no arg-length truncation)? Does the 5min timeout fire correctly? Is ENOENT distinguished from other errors with a clear install hint?
+> 2. **Parallel stages isolation** — `stages.ts`. Security + TestGen via `Promise.allSettled`, not `Promise.all`? Does a TestGen failure leave half-written test files? Does the orchestrator correctly aggregate `failures[]` from both stages?
+> 3. **Frontmatter validation strictness** — `agent-loader.ts`. Zod rejects all malformed inputs (bad model, missing required, kebab-case, unknown tool)? Does the `tools` enum match what `--allowed-tools` flag accepts?
+> 4. **System dependency check** — `validators.ts`. Does startup detect missing `claude` CLI before first stage runs? Exit code 2 with clear install URL?
+> 5. **Agent prompts hygiene** — `agents/*.agent.md`. Each prompt references its skills explicitly? `model_justification` specific? `tools` list is minimum-necessary (no `Bash` granted unnecessarily)?
 > 6. **JWT verifier seeded bugs** — `src/jwt/`. 3 bugs exploitable as described? Decoder signature shape (rawHeader/rawPayload/header/payload) works end-to-end?
 > 7. **Baseline test independence** — `tests/jwt-verifier.test.ts`. `vi.useFakeTimers()` paired with `vi.useRealTimers()` in afterEach?
 >
-> Out of scope: agent prompt quality (subjective), Anthropic API performance, real LLM output testing, formal pen-test.
+> Out of scope: agent prompt quality (subjective), Claude Code subprocess internal behavior, real LLM output testing, formal pen-test.
 >
 > Output: `docs/reviews/codex-review-<date>.md` with `[BLOCKING]`, `[SUGGESTED]`, `[INFO]` tags.
 
@@ -1122,22 +1050,24 @@ HW4 is local CLI tool. Reviewer clones, installs deps, runs pipeline once, inspe
 [... one entry per code-producing phase ...]
 
 ## Phase 10: E2E manual pipeline run
-**Tool:** Real Anthropic API (via built pipeline)
-**Models used by agents during run:**
+**Tool:** Claude Code CLI subprocess (via built pipeline)
+**Models used by agents during run** (passed via `--model` flag on each `claude -p` invocation):
 - Researcher: claude-sonnet-4-6
 - Research Verifier: claude-opus-4-8
 - Planner: claude-sonnet-4-6
 - Bug Fixer: claude-sonnet-4-6
 - Security Verifier: claude-opus-4-8
 - Unit Test Generator: claude-sonnet-4-6
-**Total cost per bug run:** ~$X (recorded post-hoc from usage tracking)
+**Total cost per bug run:** $0 — runs against developer's Claude Code subscription.
+**Wall time per bug run:** ~5-10 min (6 stages × ~1-2 min each).
 **3 bug IDs processed:** 001-alg-none-bypass, 002-expiration-off-by-one, 003-timing-attack-signature
 **Outcome:** all 3 runs exit 0, fixes applied, tests passing
 
 ## Decisions log (HW4-specific)
-- Built orchestrator on @anthropic-ai/sdk directly (no separate "Claude Agent SDK" library)
+- Orchestrator runtime is `claude -p` subprocess (NOT direct @anthropic-ai/sdk). Considered but rejected because user has Claude Code subscription, no need for separate API key.
 - 6 agents total (4 brief-required + Researcher + Planner) for true end-to-end autonomy
-- Tool registry as 4-tool minimal set (Read, Grep, Edit, Write) with resolveSafe
+- **Switched orchestrator runtime from `@anthropic-ai/sdk` to `claude -p` subprocess** to use developer's Claude Code subscription instead of separate API key. Eliminates ~$15 cost barrier, delegates tool registry + tool-use loop + retries to Claude Code internally. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK; ~290 LOC orchestrator vs ~500.
+- Tools list in frontmatter (`tools: [Read, Grep, Edit, Write]`) maps directly to Claude Code `--allowed-tools` flag — no custom registry implementation needed
 - Promise.allSettled for stages 5-6 for partial-failure isolation
 - Single-bug per pipeline invocation matching context/bugs/XXX/ structure
 - [add more during build as decisions arise]
@@ -1171,17 +1101,21 @@ HW4 is local CLI tool. Reviewer clones, installs deps, runs pipeline once, inspe
 }
 ```
 
+**Platform notes:**
+- `pipeline` (single-bug) — cross-platform (mac, linux, Windows-PowerShell/WSL).
+- `pipeline:all` (batch) — POSIX shell only (uses bash `for` loop). On Windows native, use WSL2 or invoke 3 single-bug commands manually. HOWTORUN.md "Platform notes" section documents the workaround.
+- Future-work bullet (see §10): rewrite `pipeline:all` as Node script wrapper for cross-platform execution.
+
 ### 9.2 Environment
 
 `.env.example` (committed):
 
 ```bash
-ANTHROPIC_API_KEY=
 JWT_SECRET=test-secret-for-cli-demo-only
 LOG_LEVEL=info
 ```
 
-`.env` gitignored. `ANTHROPIC_API_KEY` only required for Phase 10 (E2E run); all unit tests mock SDK.
+`.env` gitignored. **No `ANTHROPIC_API_KEY` needed** — agent dispatch goes through `claude -p` subprocess against developer's Claude Code subscription. Phase 10 prerequisite: Claude Code installed (`which claude`) and authenticated (`claude /login` once); all unit tests mock the subprocess.
 
 ### 9.3 Repo conventions
 
@@ -1202,7 +1136,7 @@ LOG_LEVEL=info
 | Phase | Tool | Model | Outcome |
 |---|---|---|---|
 | Phases 0-9 (scaffold → agents) | Claude Code | Sonnet 4.6 | accepted |
-| Phase 10 (E2E pipeline run) | Real Anthropic API | Mixed (Opus 4.8 + Sonnet 4.6 per agent) | 3 bugs processed |
+| Phase 10 (E2E pipeline run) | Claude Code CLI subprocess | Mixed (Opus 4.8 + Sonnet 4.6 per agent, via `--model` flag) | 3 bugs processed; $0 cost — uses Claude Code subscription |
 | Phase 11 (Code review) | /codex:review | (skill internal) | N findings, N addressed |
 | Phase 12 (README + agent justifications) | Claude Code | Opus 4.8 | accepted |
 | Phase 12 (HOWTORUN) | Claude Code | Sonnet 4.6 | accepted |
@@ -1220,11 +1154,11 @@ LOG_LEVEL=info
 
 ## How to verify
 1. `git checkout homework-4-submission && cd homework-4`
-2. `npm i && cp .env.example .env`  (add `ANTHROPIC_API_KEY` to `.env`)
-3. Install ripgrep: `brew install ripgrep` (mac) or `apt install ripgrep` (linux)
-4. `npm test` — orchestrator + baseline tests (offline, mocked SDK)
+2. `npm i && cp .env.example .env` (no API key needed)
+3. Install Claude Code: see https://docs.anthropic.com/claude-code, then `claude /login` once.
+4. `npm test` — orchestrator + baseline tests (offline, mocked subprocess)
 5. `npm run cli -- verify "$(cat tests/fixtures/alg-none-token.txt)"` — exploit demo (returns valid:true pre-fix!)
-6. `npm run pipeline -- --bug 001-alg-none-bypass` — runs 6-stage pipeline using real Anthropic API
+6. `npm run pipeline -- --bug 001-alg-none-bypass` — runs 6-stage pipeline via `claude -p` subprocess
 7. `npm test` again — bug-specific tests now green
 8. Inspect `context/bugs/001-alg-none-bypass/` for all 6 generated artifacts
 
@@ -1267,12 +1201,14 @@ Stated in README "Future work":
 
 - HTTP server for JWT verifier (CLI only in v1).
 - RS256/ES256 support (HS256 only in v1).
-- Real Anthropic E2E smoke tests in CI (cost prohibitive; would need careful budget gating).
+- Real Claude Code E2E smoke tests in CI (requires headless `claude` CLI authentication, currently manual).
+- Migration path to direct `@anthropic-ai/sdk` with custom tool registry (for production use cases where Claude Code subscription isn't available) — currently out of scope.
 - Parallel multi-bug pipeline runs (single bug per invocation; `pipeline:all` is sequential wrapper).
 - Cross-bug regression detection (each bug isolated).
 - Streaming pipeline output (orchestrator buffers, prints final summary).
 - LLM-based skill auto-update (skills hand-authored).
 - Per-file coverage thresholds via custom Vitest reporter (current: global threshold + manual review attention).
+- Cross-platform `pipeline:all` via Node script wrapper instead of bash `for` loop (current: POSIX shell only; Windows native users must invoke 3 single-bug commands manually or use WSL2).
 - GitHub Actions workflow.
 
 ---
@@ -1292,9 +1228,8 @@ The implementation is complete when **all** are true:
 - [ ] `tests/fixtures/{valid,alg-none,expired}-token.txt` exist and contain valid JWT-shaped strings
 - [ ] `tests/jwt-verifier/` contains 3+ generated test files (one per bug), all FIRST-compliant
 - [ ] `context/bugs/<ID>/` for all 3 bugs contains: bug-context.md (seeded), research/, implementation-plan.md, fix-summary.md (incl. Test Results section), security-report.md, test-report.md (incl. Final Test Run section)
-- [ ] `docs/openapi.yaml` — N/A (this is HW4, no API)
 - [ ] `docs/reviews/codex-review-<date>.md` exists with all blocking comments addressed or waived
 - [ ] `docs/AI-USAGE.md` covers every phase from §8.2, CMP table at top, decisions log HW4-specific
-- [ ] `docs/screenshots/` contains all artifacts listed in §8.1 (~12-15 shots)
-- [ ] `README.md` and `HOWTORUN.md` written; README contains per-agent model justification table; HOWTORUN contains ripgrep prerequisite + step-by-step setup
+- [ ] `docs/screenshots/` contains all artifacts listed in §2 module map (~12-15 shots)
+- [ ] `README.md` and `HOWTORUN.md` written; README contains per-agent model justification table; HOWTORUN contains Claude Code prerequisite (`which claude` + `claude /login`) + step-by-step setup; no `ANTHROPIC_API_KEY` referenced anywhere
 - [ ] PR opened against fork's `main` with templated body, `Alexey-Popov` requested as reviewer, labels `homework-4` and `ready-for-review`
