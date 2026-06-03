@@ -163,6 +163,27 @@ rather than `vi.mock('node:child_process')` which doesn't intercept CJS local bi
 
 ---
 
+## Phase 7: Stages + tests
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §6.5 (stages.ts, sequential 1-4 + allSettled 5-6, runTests, gitDiffNames)
+
+**Prompt:** _(authoring phase — spec §6.5 consumed directly)_
+> Implement stages.ts (~120 LOC) with SpawnFn DI to match claude-runner.ts pattern.
+> Write 4 unit tests: happy path, test-results appended, sequential failure, allSettled isolation.
+
+**Outcome:** accepted
+
+**What changed and why:**
+stages.ts: 6 sequential/parallel agent stages, orchestrator-run test results appended to
+fix-summary.md and test-report.md, gitDiffNames('src/') used to pass changed files to
+reviewers. `execFileSync` mocked in tests for git + npx calls. allSettled isolation
+verified: security-verifier failure leaves test-report.md intact.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
