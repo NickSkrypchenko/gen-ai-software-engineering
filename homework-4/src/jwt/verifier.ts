@@ -13,10 +13,6 @@ export function verifyToken(token: string, secret?: string): VerifyResult {
 
   const { rawHeader, rawPayload, signature, header, payload } = decoded;
 
-  if (header.alg === 'none') {                                  // Bug 001 — alg=none bypass
-    return { valid: true, claims: payload };
-  }
-
   if (header.alg !== 'HS256') {
     return { valid: false, error: `unsupported algorithm: ${header.alg}` };
   }

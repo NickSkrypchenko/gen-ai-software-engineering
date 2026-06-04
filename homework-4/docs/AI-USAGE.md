@@ -239,6 +239,48 @@ imports per FIRST Independent constraint. Test suite: 57 passing / 3 failing (pr
 
 ---
 
+## Phase 10: E2E manual pipeline runs (× 3 bugs)
+
+**Tool:** Claude Code subprocess (claude-sonnet-4-6 / claude-opus-4-8 per agent)
+
+**Context loaded:** Built pipeline + 3 bug context files + 6 agent files + 2 skills
+
+**Prompt:** _(orchestrator — `npm run pipeline -- --bug <ID>` × 3)_
+
+**Outcome:** 3 × complete (0 failures each after 2 pipeline bug fixes below)
+
+**What changed and why:**
+
+Two pipeline bugs discovered and fixed during E2E run:
+
+1. **`spawnClaude` stdin not piped** — Node.js `execFile` (async) ignores the `input` option;
+   only `execFileSync` supports stdin injection. `claude -p` waited 3 s for stdin, got nothing,
+   errored "Input must be provided via stdin or prompt argument". Fixed by replacing `execFile`
+   with `spawn` + `child.stdin.write(input)`.
+
+2. **`gitDiffNames` path mismatch** — `git diff --name-only HEAD -- src/` returns
+   repo-root-relative paths (`homework-4/src/jwt/verifier.ts`) but process CWD is `homework-4/`.
+   `readFile` resolved to `homework-4/homework-4/src/...` (ENOENT). Fixed by adding
+   `--relative` flag so git returns CWD-relative paths (`src/jwt/verifier.ts`).
+
+Both fixes committed separately before re-running runs. Agent runtimes (per bug):
+- researcher: 44–71 s (Sonnet 4.6)
+- research-verifier: 29–49 s (Opus 4.8)
+- planner: 17–31 s (Sonnet 4.6)
+- bug-fixer: 19–42 s (Sonnet 4.6)
+- security-verifier: 33–43 s (Opus 4.8, parallel)
+- unit-test-generator: 140–148 s (Sonnet 4.6, parallel)
+
+Bug fixes applied by agents:
+- Bug 001 (verifier.ts): removed 3-line `if (header.alg === 'none')` bypass block
+- Bug 002 (claims.ts): `payload.exp < now` → `payload.exp <= now`
+- Bug 003 (signature.ts): `signature === expected` → `timingSafeEqual` with length pre-check
+
+Unit-test-generator wrote 3 test files: `tests/jwt-verifier/{claims,verifier,signature}.test.ts`
+(10 new tests). Final: 70 passing / 0 failing. All per-file coverage ≥85%.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
