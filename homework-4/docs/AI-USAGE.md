@@ -281,6 +281,55 @@ Unit-test-generator wrote 3 test files: `tests/jwt-verifier/{claims,verifier,sig
 
 ---
 
+## Phase 11: /code-review ultra (local fallback)
+
+**Tool:** Claude Code (5-angle multi-agent review, local max-effort mode)
+
+**Context loaded:** Full branch diff vs main, scripts/pipeline/, src/jwt/
+
+**Outcome:** 15 findings (4 CONFIRMED, 2 PLAUSIBLE, 9 LOW/INFO); 4 CONFIRMED fixes applied
+
+**What changed and why:**
+4 confirmed bugs fixed in a follow-up commit:
+1. EPIPE uncaughtException: `child.stdin` had no `'error'` listener; fast-exiting subprocess
+   would EPIPE → unhandled EventEmitter error → process crash outside Promise reject path.
+   Fixed: `child.stdin.on('error', () => {})`.
+2. `tools:[]` bypass: `[].join(',') = ''` is falsy → `--allowedTools` omitted → unrestricted
+   subprocess access. Fixed: use `spec.tools.length > 0` guard; pass `'none'` explicitly.
+3. `gitDiffNames` no try/catch: `execFileSync` throws on non-zero git exit → partial state
+   after stages 1–4 with no RunResult. Fixed: wrap in try/catch, return `[]` on failure.
+4. `runTests` no timeout: `execFileSync` with no timeout → indefinite hang on vitest deadlock.
+   Fixed: `timeout: 3 * 60 * 1000`.
+2 plausible (timingSafeEqual byte-length crash, agents.get null cast), 9 cleanup/info retained
+in review output but not fixed (out of spec scope for v1).
+
+---
+
+## Phase 12: README + HOWTORUN
+
+**Tool:** Claude Code (claude-opus-4-8 for README, claude-sonnet-4-6 for HOWTORUN)
+
+**Context loaded:**
+- Spec §3 (per-agent contracts), claude-runner.ts, stages.ts, agents/ frontmatter
+- package.json scripts, validators.ts (dependency check), .env.example
+
+**Prompt (README):** Opus 4.8 — per-agent model justification table as showcase
+**Prompt (HOWTORUN):** Sonnet 4.6 — cold-start runbook from prerequisites to first run
+
+**Outcome:** accepted
+
+**What changed and why:**
+README.md (158 lines): overview, ASCII architecture diagram showing sequential 1-4 +
+allSettled 5-6 + orchestrator test injections, per-agent model justification table
+(Opus for research-verifier + security-verifier precision tasks; Sonnet for routine
+stages), project structure tree, quick start.
+HOWTORUN.md (232 lines): prerequisites (Node ≥22, Claude Code auth, no API key),
+install, single-bug run, all-bugs run, test suite with baseline-failure explanation,
+sample pino log output, artifact listing, 6-scenario troubleshooting guide, adding
+new bugs template.
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
