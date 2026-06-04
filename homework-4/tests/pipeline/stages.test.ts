@@ -2,6 +2,7 @@ import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import type { AgentSpec } from '../../scripts/pipeline/types';
 
 // Mock logger to silence output during tests
@@ -154,5 +155,82 @@ describe('runStages', () => {
     expect(result.failures).toContain('security-verifier');
     expect(existsSync(path.join(tmpDir, 'security-report.md'))).toBe(false);
     expect(existsSync(path.join(tmpDir, 'test-report.md'))).toBe(true);
+  });
+
+  test('runTests catch branch: npx failure output captured in fix-summary', async () => {
+    const mockExecFileSync = vi.mocked(execFileSync);
+    mockExecFileSync.mockImplementation((cmd: string) => {
+      if (cmd === 'git') return '' as any;
+      if (cmd === 'npx') {
+        const e: any = new Error('tests failed');
+        e.stdout = 'FAIL some.test.ts\n';
+        e.stderr = undefined;   // covers the ?? '' branch on stderr
+        throw e;
+      }
+      return '' as any;
+    });
+
+    let call = 0;
+    const spawn = vi.fn().mockImplementation(async () => ({
+      stdout: ['# Research', '# Verified', '# Plan', '# Fix', '# Security', '# Tests'][call++],
+      stderr: '',
+    }));
+
+    await runStages(
+      { bugId: 'test-bug', agents: makeAgents({}), skills: NO_SKILLS, bugDir: tmpDir },
+      spawn,
+    );
+
+    const fixSummary = readFileSync(path.join(tmpDir, 'fix-summary.md'), 'utf-8');
+    expect(fixSummary).toContain('FAIL some.test.ts');
+  });
+
+  test('both parallel stages fail: test-report appendFile catch silently swallowed', async () => {
+    let call = 0;
+    const spawn = vi.fn().mockImplementation(async () => {
+      const idx = call++;
+      if (idx >= 4) throw new Error(`stage ${idx} failed`);  // both security + testgen fail
+      return { stdout: `# Stage ${idx}`, stderr: '' };
+    });
+
+    const result = await runStages(
+      { bugId: 'test-bug', agents: makeAgents({}), skills: NO_SKILLS, bugDir: tmpDir },
+      spawn,
+    );
+
+    expect(result.failures).toContain('security-verifier');
+    expect(result.failures).toContain('unit-test-generator');
+    // appendFile creates test-report.md even when agent failed (orchestrator appends final run)
+    expect(result.failures).toHaveLength(2);
+  });
+
+  test('changed files branch: git diff returns file path read into context', async () => {
+    // Write a src file that git diff "reports" as changed
+    const srcFile = path.join(tmpDir, 'src/jwt/verifier.ts');
+    mkdirSync(path.join(tmpDir, 'src/jwt'), { recursive: true });
+    writeFileSync(srcFile, 'export function verifyToken() {}');
+
+    const mockExecFileSync = vi.mocked(execFileSync);
+    mockExecFileSync.mockImplementation((cmd: string) => {
+      if (cmd === 'git') return `${srcFile}\n` as any;
+      if (cmd === 'npx') return 'Tests passed\n' as any;
+      return '' as any;
+    });
+
+    let call = 0;
+    const spawn = vi.fn().mockImplementation(async () => ({
+      stdout: ['# Research', '# Verified', '# Plan', '# Fix', '# Security', '# Tests'][call++],
+      stderr: '',
+    }));
+
+    await runStages(
+      { bugId: 'test-bug', agents: makeAgents({}), skills: NO_SKILLS, bugDir: tmpDir },
+      spawn,
+    );
+
+    // security-verifier and unit-test-generator calls include changed-file content
+    const calls = spawn.mock.calls;
+    const reviewMsg = calls[4][1] as string;  // 5th call (security-verifier), 2nd arg is userMessage
+    expect(reviewMsg).toContain('changed-file');
   });
 });

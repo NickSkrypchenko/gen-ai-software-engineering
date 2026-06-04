@@ -184,6 +184,30 @@ verified: security-verifier failure leaves test-report.md intact.
 
 ---
 
+## Phase 8: Run-pipeline entry + coverage hardening
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §6.2 (run-pipeline.ts entry), §7.3 (coverage config), §8.4 (review-brief.md)
+- Coverage output from all test files (57 passing, 3 intentionally failing pre-fix)
+
+**Prompt:** _(authoring phase — spec §6.2/§7.3 consumed directly)_
+> Verify run-pipeline.ts integration (exits 2 for nonexistent bug, for missing --bug arg).
+> Create docs/specs/review-brief.md. Fix coverage gaps: reportOnFailure, jwt unit tests,
+> c8 ignore on spawnClaude seam, validators DI. Ensure all files ≥85% per perFile:true.
+
+**Outcome:** accepted (with iterative fixes — see decisions log)
+
+**What changed and why:**
+vitest.config: added `reportOnFailure: true` (coverage generates even when pre-fix tests
+fail), `json-summary` reporter. Added `tests/jwt-unit.test.ts` (13 tests covering decoder
+error paths, validateClaims edge cases, verifyToken error paths). All files now ≥85% per-file.
+`docs/specs/review-brief.md` created for Phase 11 codex:review. Pipeline smoke tests confirmed:
+`--bug nonexistent` exits 2; no `--bug` arg exits 2. Total: 57 passing, 3 failing (pre-fix).
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
@@ -192,5 +216,7 @@ verified: security-verifier failure leaves test-report.md intact.
 - **`Promise.allSettled` for stages 5-6** — partial-failure isolation (both complete even if one fails).
 - **CommonJS module format** chosen over ESM for tsx compatibility and zero `.js` extension friction on local imports.
 - **`runAgent` returns `{ text, durationMs }`** — not `{ text, turns, usage }` as in SDK design. Subprocess stdout doesn't expose token counts. Duration logged instead.
+- **`reportOnFailure: true` in vitest.config** — pre-fix baseline tests fail by design; coverage must still generate to verify per-file thresholds.
+- **`/* c8 ignore start/end */` on `spawnClaude`** — subprocess seam excluded from coverage; DI injection is the test contract.
 - **`spawnClaude` exported as injectable seam** — `vi.mock('node:child_process')` doesn't intercept CommonJS local bindings. `runAgent` accepts `spawn` as a defaulted parameter. Tests inject `vi.fn()` directly. Avoids all module system hacks.
 - _(add more as decisions arise during build)_

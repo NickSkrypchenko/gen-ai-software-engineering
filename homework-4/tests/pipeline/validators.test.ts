@@ -1,5 +1,5 @@
-import { describe, test, expect, vi, afterEach } from 'vitest';
-import { validateAgentSkillRefs } from '../../scripts/pipeline/validators';
+import { describe, test, expect, vi } from 'vitest';
+import { validateAgentSkillRefs, checkSystemDependencies } from '../../scripts/pipeline/validators';
 import type { AgentSpec } from '../../scripts/pipeline/types';
 
 function makeAgent(overrides: Partial<AgentSpec> = {}): AgentSpec {
@@ -43,5 +43,36 @@ describe('validateAgentSkillRefs', () => {
     const agents = new Map([['agent', makeAgent({ skills: ['wrong-skill'] })]]);
     expect(() => validateAgentSkillRefs(agents, skills))
       .toThrow('actual-skill');
+  });
+});
+
+describe('checkSystemDependencies', () => {
+  test('does not exit when called with no args in real environment (claude+git+npx on PATH)', () => {
+    // This calls the real `which` against the actual PATH — passes because claude, git, npx exist.
+    expect(() => checkSystemDependencies()).not.toThrow();
+  });
+
+  test('does not exit when all deps found (injected)', () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+    const which = vi.fn();
+    checkSystemDependencies(which);
+    expect(which).toHaveBeenCalledWith('claude');
+    expect(which).toHaveBeenCalledWith('git');
+    expect(which).toHaveBeenCalledWith('npx');
+    expect(exitSpy).not.toHaveBeenCalled();
+    exitSpy.mockRestore();
+  });
+
+  test('exits with code 2 when a dep is missing (injected)', () => {
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const which = vi.fn().mockImplementation((dep: string) => {
+      if (dep === 'claude') throw new Error('not found');
+    });
+    checkSystemDependencies(which);
+    expect(exitSpy).toHaveBeenCalledWith(2);
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('claude'));
+    exitSpy.mockRestore();
+    consoleSpy.mockRestore();
   });
 });

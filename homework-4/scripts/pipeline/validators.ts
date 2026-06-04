@@ -1,7 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import type { AgentSpec } from './types';
 
-export function checkSystemDependencies(): void {
+type WhichFn = (dep: string) => void;
+
+const defaultWhich: WhichFn = (dep) => execFileSync('which', [dep], { stdio: 'ignore' });
+
+export function checkSystemDependencies(whichFn: WhichFn = defaultWhich): void {
   const deps: Array<{ cmd: string; hint: string }> = [
     {
       cmd: 'claude',
@@ -13,7 +17,7 @@ export function checkSystemDependencies(): void {
 
   for (const { cmd, hint } of deps) {
     try {
-      execFileSync('which', [cmd], { stdio: 'ignore' });
+      whichFn(cmd);
     } catch {
       console.error(`Missing system dependency: ${cmd}. ${hint}`);
       process.exit(2);

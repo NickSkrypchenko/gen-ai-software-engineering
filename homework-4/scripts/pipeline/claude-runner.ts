@@ -14,6 +14,7 @@ export function buildSystemPrompt(agent: AgentSpec, skills: Map<string, string>)
   return agent.prompt + skillBlocks;
 }
 
+/* c8 ignore start — real subprocess seam; coverage via runAgent's injected `spawn` param in tests */
 export function spawnClaude(
   args: string[],
   input: string,
@@ -30,6 +31,7 @@ export function spawnClaude(
     });
   });
 }
+/* c8 ignore end */
 
 export async function runAgent(
   spec: AgentSpec,
