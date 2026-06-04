@@ -208,6 +208,37 @@ error paths, validateClaims edge cases, verifyToken error paths). All files now 
 
 ---
 
+## Phase 9: Agent prompt files
+
+**Tool:** Claude Code (claude-sonnet-4-6)
+
+**Context loaded:**
+- Spec §3.3 (per-agent model/tool/skill assignments)
+- `scripts/pipeline/agent-loader.ts` — AgentSpecSchema `.strict()`, MODELS/TOOLS enums
+- `scripts/pipeline/claude-runner.ts` — `buildSystemPrompt` injects skills as `<skill name="...">` XML
+- `scripts/pipeline/stages.ts` — gitDiffNames → `<changed-file>` blocks for stages 5-6
+- Existing `skills/` (research-quality-measurement.md, unit-tests-FIRST.md)
+
+**Prompt:** _(review step per ground rule #4 — user reviewed 6 prompt drafts before commit)_
+> Draft all 6 agent files; show each prompt body for confirmation before committing.
+> User raised 5 issues: planner Before/After clarity, skills forward-refs, model ID verification,
+> jwt-fixtures availability, changed-file injection mechanism.
+
+**Outcome:** accepted (after review + 5-point pre-commit checklist)
+
+**What changed and why:**
+6 `.agent.md` files written to `agents/`. Gray-matter body is the prompt (not a frontmatter
+field — AgentSpecSchema is `.strict()`, `prompt` comes from `parsed.content.trim()` in
+agent-loader line 36). Zod validation confirmed via pipeline dry-run: all 6 agents load
+and pass `validateAgentSkillRefs` (research-verifier→research-quality-measurement,
+unit-test-generator→unit-tests-FIRST both resolved). Key prompt design decisions:
+planner "Files to Change" uses explicit Before/After code fence pairs; security-verifier
+and unit-test-generator prompt bodies document the `<changed-file>` injection mechanism;
+unit-test-generator mandates `beforeEach/afterEach` fake-timer pair and `jwt-fixtures`
+imports per FIRST Independent constraint. Test suite: 57 passing / 3 failing (pre-fix).
+
+---
+
 ## Decisions log (HW4-specific)
 
 - **Orchestrator runtime is `claude -p` subprocess** (NOT direct @anthropic-ai/sdk). User has Claude Code subscription; no API key setup needed. Delegates tool-use loop + retries + 4 built-in tools to Claude Code. Trade-off: ~2-5s subprocess startup per stage vs ~100ms SDK.
