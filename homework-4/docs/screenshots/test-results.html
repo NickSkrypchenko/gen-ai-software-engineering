@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HW4 — Test Results</title>
+<style>
+  body { background: #1e1e2e; color: #cdd6f4; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; margin: 0; padding: 24px; }
+  h2 { color: #89b4fa; font-size: 14px; margin: 0 0 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  pre { margin: 0; line-height: 1.6; white-space: pre; }
+  .pass  { color: #a6e3a1; }
+  .fail  { color: #f38ba8; }
+  .info  { color: #89dceb; }
+  .dim   { color: #6c7086; }
+  .head  { color: #fab387; font-weight: bold; }
+  .section { background: #181825; border: 1px solid #313244; border-radius: 6px; padding: 16px 20px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="section">
+  <h2>Test suite — homework-4</h2>
+  <pre>
+<span class="pass"> ✓ tests/pipeline/claude-runner.test.ts  (8 tests)  5ms</span>
+<span class="pass"> ✓ tests/jwt-verifier.test.ts            (5 tests)  7ms</span>
+<span class="pass"> ✓ tests/jwt-unit.test.ts               (13 tests)  6ms</span>
+<span class="pass"> ✓ tests/jwt-verifier/verifier.test.ts   (3 tests)  7ms</span>
+<span class="pass"> ✓ tests/pipeline/validators.test.ts     (7 tests) 51ms</span>
+<span class="pass"> ✓ tests/pipeline/agent-loader.test.ts  (11 tests) 15ms</span>
+<span class="pass"> ✓ tests/pipeline/stages.test.ts         (8 tests) 83ms</span>
+<span class="pass"> ✓ tests/pipeline/messages.test.ts       (3 tests)  2ms</span>
+<span class="pass"> ✓ tests/jwt-verifier/signature.test.ts  (3 tests)  4ms</span>
+<span class="pass"> ✓ tests/jwt-verifier/claims.test.ts     (4 tests)  5ms</span>
+<span class="pass"> ✓ tests/pipeline/skill-loader.test.ts   (7 tests)  4ms</span>
+
+<span class="head"> Test Files  11 passed (11)</span>
+<span class="head">      Tests  72 passed (72)</span>
+<span class="dim">   Duration  862ms</span>
+</pre>
+</div>
+
+<div class="section">
+  <h2>Coverage — v8 (perFile threshold: 85%)</h2>
+  <pre>
+<span class="dim">-------------------|---------|----------|---------|---------|</span>
+<span class="dim">File               | % Stmts | % Branch | % Funcs | % Lines |</span>
+<span class="dim">-------------------|---------|----------|---------|---------|</span>
+<span class="pass">All files          |     100 |    96.87 |     100 |     100 |</span>
+<span class="dim"> scripts/pipeline  |     100 |    96.66 |     100 |     100 |</span>
+<span class="pass">  agent-loader.ts  |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  claude-runner.ts |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  messages.ts      |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  skill-loader.ts  |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  stages.ts        |     100 |    87.50 |     100 |     100 |</span>
+<span class="pass">  validators.ts    |     100 |      100 |     100 |     100 |</span>
+<span class="dim"> src/jwt           |     100 |    97.22 |     100 |     100 |</span>
+<span class="pass">  claims.ts        |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  decoder.ts       |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  signature.ts     |     100 |      100 |     100 |     100 |</span>
+<span class="pass">  verifier.ts      |     100 |    92.30 |     100 |     100 |</span>
+<span class="dim">-------------------|---------|----------|---------|---------|</span>
+</pre>
+</div>
+</body>
+</html>

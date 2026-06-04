@@ -19,11 +19,12 @@
 | 8 | Run-pipeline entry | Spec §6.2 | Sonnet 4.6 | CLI argv parsing, startup validation, integrates phases 5-7 |
 | 9 | 6 agents (.agent.md) | Spec §3 per-agent contract | Sonnet 4.6 | 6 markdown files with frontmatter + prompts |
 | 10 | E2E manual pipeline run | Built pipeline + 3 bugs | Mixed (Opus 4.8 / Sonnet 4.6 per agent via --model flag) | npm run pipeline -- --bug <ID> × 3 |
-| 11 | Code review | Branch diff + review-brief.md | /codex:review | Skill invocation |
-| 12 | README + agent justifications | Spec + final repo | claude-opus-4-8 | Opus for per-agent model justification (brief's showcase) |
+| 11 | Code review | Branch diff | `/code-review ultra` (local multi-agent fallback) | 9-angle finder + 1-vote verify + gap sweep |
+| 11b | Bug fixes | Review findings | Sonnet 4.6 | 4 confirmed bugs fixed (EPIPE, tools bypass, git catch, timeout) |
+| 12 | README | Spec + final repo | claude-opus-4-8 | Per-agent model justification table as Opus showcase |
 | 12 | HOWTORUN | Spec + final scripts | claude-sonnet-4-6 | Cold-start runbook |
-| 13 | Screenshots | Pipeline runs + final code | Playwright MCP (fallback: manual) | Tool orchestration |
-| 14 | AI-USAGE consolidation | Conversation + per-phase notes | Sonnet 4.6 | Editorial pass |
+| 13 | Screenshots | Pipeline log + test output | Playwright MCP | HTML render → browser screenshot × 2 |
+| 14 | AI-USAGE consolidation | All phase entries | Sonnet 4.6 | Editorial pass — table + decisions log |
 | 15 | PR | All commits | Sonnet 4.6 | PR body composition |
 
 ---
@@ -327,6 +328,35 @@ HOWTORUN.md (232 lines): prerequisites (Node ≥22, Claude Code auth, no API key
 install, single-bug run, all-bugs run, test suite with baseline-failure explanation,
 sample pino log output, artifact listing, 6-scenario troubleshooting guide, adding
 new bugs template.
+
+---
+
+## Phase 13: Screenshots
+
+**Tool:** Playwright MCP (`mcp__playwright__browser_*`)
+
+**Context loaded:** Live pipeline log output, npm test output, coverage table
+
+**Outcome:** 2 screenshots committed to `docs/screenshots/`
+
+**What changed and why:**
+Playwright MCP blocks `file://` protocol; served HTML via `python3 -m http.server 9876`.
+Two HTML pages created with Catppuccin-dark terminal styling and full-page screenshots taken:
+- `01-test-results.png` — 72-test pass summary + per-file coverage table (112 KB)
+- `02-pipeline-run.png` — all 3 bug pipeline runs with agent timings (233 KB)
+
+---
+
+## Phase 14: AI-USAGE consolidation
+
+**Tool:** Claude Code (claude-sonnet-4-6) — editorial pass
+
+**Context loaded:** Full AI-USAGE.md as written through phases 0–13
+
+**Outcome:** Summary table updated to reflect actual outcomes (Phase 11 was local
+`/code-review ultra` fallback, not cloud codex:review; Phase 11b added for bug fixes;
+Phase 13 Playwright details added). Decisions log remains append-only. No content
+removed — consolidation is additive.
 
 ---
 
