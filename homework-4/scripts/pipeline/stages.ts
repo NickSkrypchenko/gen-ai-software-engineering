@@ -7,11 +7,14 @@ import type { RunCtx, RunResult, AgentSpec } from './types';
 
 export type SpawnFn = typeof spawnClaude;
 
+const TEST_TIMEOUT_MS = 3 * 60 * 1000;
+
 function runTests(): string {
   try {
     return execFileSync('npx', ['vitest', 'run', 'tests/'], {
       encoding: 'utf-8',
       stdio: 'pipe',
+      timeout: TEST_TIMEOUT_MS,
     });
   } catch (e: any) {
     return (e.stdout?.toString() ?? '') + '\n' + (e.stderr?.toString() ?? '');
@@ -19,12 +22,16 @@ function runTests(): string {
 }
 
 function gitDiffNames(scope: string): string[] {
-  return execFileSync('git', ['diff', '--name-only', '--relative', 'HEAD', '--', scope], {
-    encoding: 'utf-8',
-  })
-    .trim()
-    .split('\n')
-    .filter(Boolean);
+  try {
+    return execFileSync('git', ['diff', '--name-only', '--relative', 'HEAD', '--', scope], {
+      encoding: 'utf-8',
+    })
+      .trim()
+      .split('\n')
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 export async function runStages(ctx: RunCtx, spawn: SpawnFn = spawnClaude): Promise<RunResult> {

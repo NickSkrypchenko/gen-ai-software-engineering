@@ -45,6 +45,7 @@ export function spawnClaude(
       }
     });
 
+    child.stdin.on('error', () => { /* EPIPE when subprocess exits before reading all stdin */ });
     child.stdin.write(input, 'utf-8');
     child.stdin.end();
   });
@@ -64,7 +65,7 @@ export async function runAgent(
     '-p',
     '--model', spec.model,
     '--append-system-prompt', systemPrompt,
-    ...(allowedTools ? ['--allowedTools', allowedTools] : []),
+    ...(spec.tools.length > 0 ? ['--allowedTools', allowedTools] : ['--allowedTools', 'none']),
   ];
 
   const start = Date.now();

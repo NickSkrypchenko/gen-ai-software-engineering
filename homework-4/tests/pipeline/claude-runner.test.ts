@@ -66,4 +66,14 @@ describe('runAgent — subprocess behaviour (spawn injected)', () => {
     const spawn = vi.fn().mockResolvedValue({ stdout: '   ', stderr: '' });
     await expect(runAgent(BASE_SPEC, NO_SKILLS, 'hi', spawn)).rejects.toThrow('empty output');
   });
+
+  test('passes --allowedTools none when tools list is empty', async () => {
+    const noToolsSpec = { ...BASE_SPEC, tools: [] as any };
+    const spawn = vi.fn().mockResolvedValue({ stdout: 'ok', stderr: '' });
+    await runAgent(noToolsSpec, NO_SKILLS, 'hi', spawn);
+    const [args] = spawn.mock.calls[0] as [string[], string];
+    const idx = args.indexOf('--allowedTools');
+    expect(idx).toBeGreaterThan(-1);
+    expect(args[idx + 1]).toBe('none');
+  });
 });

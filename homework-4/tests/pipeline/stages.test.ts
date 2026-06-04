@@ -204,6 +204,31 @@ describe('runStages', () => {
     expect(result.failures).toHaveLength(2);
   });
 
+  test('gitDiffNames catch branch: git failure returns empty list and pipeline completes', async () => {
+    const mockExecFileSync = vi.mocked(execFileSync);
+    mockExecFileSync.mockImplementation((cmd: string) => {
+      if (cmd === 'git') throw new Error('fatal: not a git repository');
+      if (cmd === 'npx') return 'Tests passed\n' as any;
+      return '' as any;
+    });
+
+    let call = 0;
+    const spawn = vi.fn().mockImplementation(async () => ({
+      stdout: ['# Research', '# Verified', '# Plan', '# Fix', '# Security', '# Tests'][call++],
+      stderr: '',
+    }));
+
+    const result = await runStages(
+      { bugId: 'test-bug', agents: makeAgents({}), skills: NO_SKILLS, bugDir: tmpDir },
+      spawn,
+    );
+
+    // Pipeline completes; reviewers receive no <changed-file> blocks
+    expect(result.failures).toHaveLength(0);
+    const reviewMsg = spawn.mock.calls[4][1] as string;
+    expect(reviewMsg).not.toContain('changed-file');
+  });
+
   test('changed files branch: git diff returns file path read into context', async () => {
     // Write a src file that git diff "reports" as changed
     const srcFile = path.join(tmpDir, 'src/jwt/verifier.ts');
