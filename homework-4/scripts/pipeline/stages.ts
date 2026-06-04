@@ -19,7 +19,7 @@ function runTests(): string {
 }
 
 function gitDiffNames(scope: string): string[] {
-  return execFileSync('git', ['diff', '--name-only', 'HEAD', '--', scope], {
+  return execFileSync('git', ['diff', '--name-only', '--relative', 'HEAD', '--', scope], {
     encoding: 'utf-8',
   })
     .trim()

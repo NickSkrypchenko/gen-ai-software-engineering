@@ -1,4 +1,4 @@
-import { execFile } from 'node:child_process';
+import { spawn as nodeSpawn } from 'node:child_process';
 import type { AgentSpec } from './types';
 
 const SUBPROCESS_TIMEOUT_MS = 5 * 60 * 1000;
@@ -20,15 +20,33 @@ export function spawnClaude(
   input: string,
 ): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    (execFile as any)('claude', args, {
-      input,
-      encoding: 'utf-8',
-      timeout: SUBPROCESS_TIMEOUT_MS,
-      maxBuffer: 10 * 1024 * 1024,
-    }, (err: Error | null, stdout: string, stderr: string) => {
-      if (err) reject(err);
-      else resolve({ stdout, stderr });
+    const child = nodeSpawn('claude', args, { timeout: SUBPROCESS_TIMEOUT_MS });
+
+    let stdout = '';
+    let stderr = '';
+
+    child.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString('utf-8'); });
+    child.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString('utf-8'); });
+
+    child.on('error', reject);
+
+    child.on('close', (code, signal) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        const err: any = new Error(`Command failed: claude ${args[0] ?? ''}`);
+        err.stdout = stdout;
+        err.stderr = stderr;
+        if (child.killed || signal === 'SIGTERM') {
+          err.killed = true;
+          err.signal = 'SIGTERM';
+        }
+        reject(err);
+      }
     });
+
+    child.stdin.write(input, 'utf-8');
+    child.stdin.end();
   });
 }
 /* c8 ignore end */
