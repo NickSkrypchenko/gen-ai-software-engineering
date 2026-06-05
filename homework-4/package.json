@@ -1,0 +1,30 @@
+{
+  "name": "homework-4",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "pipeline":     "tsx scripts/run-pipeline.ts",
+    "pipeline:all": "for bug in 001-alg-none-bypass 002-expiration-off-by-one 003-timing-attack-signature; do npm run pipeline -- --bug $bug || exit 1; done",
+    "cli":          "tsx src/index.ts",
+    "build":        "tsc -p tsconfig.json",
+    "test":         "vitest run --coverage",
+    "test:watch":   "vitest",
+    "test:unit":    "vitest run tests/",
+    "typecheck":    "tsc --noEmit",
+    "seed:bugs":    "tsx scripts/seed-bugs.ts",
+    "fixtures:gen": "tsx scripts/generate-fixtures.ts"
+  },
+  "dependencies": {
+    "dotenv":       "^16.4.7",
+    "gray-matter":  "^4.0.3",
+    "pino":         "^9.6.0",
+    "zod":          "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node":          "^22.10.7",
+    "@vitest/coverage-v8":  "^3.2.3",
+    "tsx":                  "^4.19.2",
+    "typescript":           "^5.7.3",
+    "vitest":               "^3.2.3"
+  }
+}
