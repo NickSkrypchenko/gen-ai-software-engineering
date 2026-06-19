@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HW4 — Pipeline Run</title>
+<style>
+  body { background: #1e1e2e; color: #cdd6f4; font-family: 'Menlo', 'Monaco', monospace; font-size: 13px; margin: 0; padding: 24px; }
+  h2 { color: #89b4fa; font-size: 14px; margin: 0 0 12px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  pre { margin: 0; line-height: 1.7; white-space: pre; }
+  .ts   { color: #6c7086; }
+  .key  { color: #89b4fa; }
+  .val  { color: #a6e3a1; }
+  .done { color: #a6e3a1; }
+  .start{ color: #fab387; }
+  .fail { color: #f38ba8; }
+  .info { color: #cba6f7; }
+  .section { background: #181825; border: 1px solid #313244; border-radius: 6px; padding: 16px 20px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="section">
+  <h2>npm run pipeline -- --bug 001-alg-none-bypass</h2>
+  <pre>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"researcher"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-sonnet-4-6"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"researcher"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">53726</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"research-verifier"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-opus-4-8"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"research-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">36217</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"planner"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-sonnet-4-6"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"planner"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">23758</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"bug-fixer"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-sonnet-4-6"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"bug-fixer"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">42051</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"security-verifier"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-opus-4-8"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"unit-test-generator"</span><span class="ts">,</span><span class="key">"model"</span><span class="ts">:</span><span class="val">"claude-sonnet-4-6"</span><span class="ts">,</span><span class="start">"msg":"starting"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"security-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">33323</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"unit-test-generator"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">147791</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"summary"</span><span class="ts">:{</span><span class="key">"bugId"</span><span class="ts">:</span><span class="val">"001-alg-none-bypass"</span><span class="ts">,</span><span class="key">"stagesRun"</span><span class="ts">:</span><span class="val">6</span><span class="ts">,</span><span class="key">"failures"</span><span class="ts">:[]},</span><span class="info">"msg":"Pipeline complete"</span><span class="ts">}</span>
+</pre>
+</div>
+
+<div class="section">
+  <h2>npm run pipeline -- --bug 002-expiration-off-by-one</h2>
+  <pre>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"researcher"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">38332</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"research-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">41100</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"planner"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">18975</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"bug-fixer"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">19519</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"security-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">34714</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"unit-test-generator"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">140811</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"summary"</span><span class="ts">:{</span><span class="key">"bugId"</span><span class="ts">:</span><span class="val">"002-expiration-off-by-one"</span><span class="ts">,</span><span class="key">"stagesRun"</span><span class="ts">:</span><span class="val">6</span><span class="ts">,</span><span class="key">"failures"</span><span class="ts">:[]},</span><span class="info">"msg":"Pipeline complete"</span><span class="ts">}</span>
+</pre>
+</div>
+
+<div class="section">
+  <h2>npm run pipeline -- --bug 003-timing-attack-signature</h2>
+  <pre>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"researcher"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">44819</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"research-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">36620</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"planner"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">30725</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"bug-fixer"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">21267</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"security-verifier"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">42808</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"agent"</span><span class="ts">:</span><span class="val">"unit-test-generator"</span><span class="ts">,</span><span class="key">"durationMs"</span><span class="ts">:</span><span class="val">139649</span><span class="ts">,</span><span class="done">"msg":"done"</span><span class="ts">}</span>
+<span class="ts">{"level":30,</span><span class="key">"summary"</span><span class="ts">:{</span><span class="key">"bugId"</span><span class="ts">:</span><span class="val">"003-timing-attack-signature"</span><span class="ts">,</span><span class="key">"stagesRun"</span><span class="ts">:</span><span class="val">6</span><span class="ts">,</span><span class="key">"failures"</span><span class="ts">:[]},</span><span class="info">"msg":"Pipeline complete"</span><span class="ts">}</span>
+</pre>
+</div>
+</body>
+</html>
