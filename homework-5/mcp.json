@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PAT}"
+      }
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/wildix/Desktop/SET/ai-assisted-dev-homework/gen-ai-software-engineering"
+      ]
+    },
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer ${NOTION_TOKEN}\", \"Notion-Version\": \"2022-06-28\"}"
+      }
+    },
+    "lorem-ipsum": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "homework-5/custom-mcp-server",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}
