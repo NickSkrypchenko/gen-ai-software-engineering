@@ -25,7 +25,8 @@ This project is the Homework 6 capstone: **four Claude Code meta-agents** that b
 | Test runner | Vitest | 3.x |
 | Coverage | `@vitest/coverage-v8` | latest |
 | Decimal math | `decimal.js` | 10.x |
-| Custom MCP server | `fastmcp` | latest |
+| Custom MCP server | `fastmcp` | 4.x (1.x crashes on `start()` vs MCP SDK ≥1.29) |
+| MCP tool-param schema | `zod` | 3.x (required by fastmcp's Standard-Schema params) |
 | External MCP | `@upstash/context7-mcp` (build-time) | latest |
 | IDs | `crypto.randomUUID()` (built-in) | — |
 

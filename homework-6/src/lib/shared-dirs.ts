@@ -49,6 +49,16 @@ export function clearDirs(dirs: SharedDirs): void {
   }
 }
 
+/**
+ * Reduce an arbitrary id to a safe single path segment — defense in depth against path
+ * traversal when an id is interpolated into a filename. Any character outside `[A-Za-z0-9_-]`
+ * (notably `/`, `\`, `.`) is replaced; an empty result falls back to `invalid`.
+ */
+export function sanitizeSegment(id: string): string {
+  const cleaned = String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64);
+  return cleaned.length > 0 ? cleaned : 'invalid';
+}
+
 /** Write `obj` as pretty JSON to `path`. */
 export function writeJson(path: string, obj: unknown): void {
   writeFileSync(path, JSON.stringify(obj, null, 2) + '\n', 'utf8');
@@ -59,10 +69,15 @@ export function readJson<T = unknown>(path: string): T {
   return JSON.parse(readFileSync(path, 'utf8')) as T;
 }
 
-/** List `*.result.json` filenames in the results dir (sorted). */
-export function listResultFiles(dirs: SharedDirs): string[] {
-  if (!existsSync(dirs.results)) return [];
-  return readdirSync(dirs.results)
+/** List `*.result.json` filenames directly in `dir` (sorted). */
+export function listResultFilesIn(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
     .filter((n) => n.endsWith('.result.json'))
     .sort();
+}
+
+/** List `*.result.json` filenames in the results dir (sorted). */
+export function listResultFiles(dirs: SharedDirs): string[] {
+  return listResultFilesIn(dirs.results);
 }

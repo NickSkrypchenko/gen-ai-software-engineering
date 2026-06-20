@@ -115,7 +115,8 @@ Tally: **2 APPROVE · 3 HOLD · 1 REJECT · 2 REJECTED_VALIDATION = 8.**
 | Decimal math | `decimal.js` | 10.x |
 | Test runner | Vitest | 3.x |
 | Coverage | `@vitest/coverage-v8` | latest |
-| Custom MCP server | `fastmcp` + `zod` | latest |
+| Custom MCP server | `fastmcp` | 4.x |
+| MCP tool-param schema | `zod` | 3.x |
 | External MCP (build-time) | `@upstash/context7-mcp` | latest |
 | IDs | `crypto.randomUUID()` (built-in) | — |
 

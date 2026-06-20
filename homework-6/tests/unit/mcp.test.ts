@@ -41,6 +41,11 @@ describe('pipeline-status MCP data functions', () => {
     expect(getTransactionStatus(resultsDir, 'NOPE').found).toBe(false);
   });
 
+  it('get_transaction_status rejects a path-traversal id without reading outside the dir', () => {
+    expect(getTransactionStatus(resultsDir, '../../../../etc/passwd').found).toBe(false);
+    expect(getTransactionStatus(resultsDir, 'TXN003/../../secret').found).toBe(false);
+  });
+
   it('list_pipeline_results tallies all 8 results', () => {
     const summary = listPipelineResults(resultsDir);
     expect(summary.total).toBe(8);

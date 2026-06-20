@@ -28,6 +28,12 @@ const REQUIRED_FIELDS: Array<keyof RawTransaction> = [
   'timestamp',
 ];
 
+/**
+ * `transaction_id` becomes part of result/audit filenames, so it must be a safe path segment.
+ * Restrict to an unambiguous token charset — this also blocks path traversal (`../`, `/`).
+ */
+const TRANSACTION_ID = /^[A-Za-z0-9_-]+$/;
+
 /** Strict-ish ISO 8601 with a `Z` or numeric offset, plus a real calendar check. */
 function isValidIso8601(ts: string): boolean {
   if (typeof ts !== 'string') return false;
@@ -46,6 +52,10 @@ export function validateTransaction(tx: Partial<RawTransaction>): ValidationResu
     if (isMissing(tx[field])) {
       return { valid: false, status: 'rejected', reject_reason: `MISSING_FIELD:${field}` };
     }
+  }
+
+  if (!TRANSACTION_ID.test(tx.transaction_id as string)) {
+    return { valid: false, status: 'rejected', reject_reason: 'INVALID_TRANSACTION_ID' };
   }
 
   if (!isPositiveAmount(tx.amount as string)) {

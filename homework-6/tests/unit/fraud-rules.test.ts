@@ -54,6 +54,12 @@ describe('scoreTransaction (additive risk)', () => {
     expect(r.matched_signals).toContain('CROSS_BORDER');
   });
 
+  it('does NOT treat an absent country as cross-border (USD, no metadata)', () => {
+    const r = scoreTransaction(tx({ currency: 'USD', metadata: undefined }), rates);
+    expect(r.matched_signals).not.toContain('CROSS_BORDER');
+    expect(r.risk_score).toBe(0);
+  });
+
   it('wire adds 0.10 and stacks with high value (0.50)', () => {
     const r = scoreTransaction(tx({ amount: '25000.00', transaction_type: 'wire_transfer' }), rates);
     expect(r.risk_score).toBe(0.5);

@@ -56,8 +56,10 @@ export function scoreTransaction(tx: RawTransaction, rates: FxTable): RiskResult
     hundredths += SIGNAL_WEIGHTS.OFF_HOURS;
   }
 
+  // Cross-border on the currency dimension, or on a *known* non-US country. An absent country
+  // is not treated as foreign (the currency check still covers non-USD).
   const country = tx.metadata?.country;
-  if (tx.currency !== 'USD' || country !== 'US') {
+  if (tx.currency !== 'USD' || (country !== undefined && country !== 'US')) {
     matched.push('CROSS_BORDER');
     hundredths += SIGNAL_WEIGHTS.CROSS_BORDER;
   }

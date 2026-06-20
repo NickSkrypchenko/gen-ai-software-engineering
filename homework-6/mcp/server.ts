@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url';
 import { FastMCP } from 'fastmcp';
 import { z } from 'zod';
 
-import { listResultFiles, readJson, resolveSharedDirs } from '../src/lib/shared-dirs.js';
+import { listResultFilesIn, readJson, resolveSharedDirs } from '../src/lib/shared-dirs.js';
 import type { Decision, PipelineSummary, TransactionResult } from '../src/types.js';
 
 export interface TransactionStatus {
@@ -48,8 +48,14 @@ const emptyCounts = (): Record<Decision, number> => ({
   REJECTED_VALIDATION: 0,
 });
 
+/** Safe single path segment — blocks `../` traversal via the tool parameter. */
+const SAFE_TRANSACTION_ID = /^[A-Za-z0-9_-]+$/;
+
 /** Status of a single transaction from `shared/results/<id>.result.json`. */
 export function getTransactionStatus(resultsDir: string, transactionId: string): TransactionStatus {
+  if (!SAFE_TRANSACTION_ID.test(transactionId)) {
+    return { transaction_id: transactionId, found: false };
+  }
   const file = join(resultsDir, `${transactionId}.result.json`);
   if (!existsSync(file)) {
     return { transaction_id: transactionId, found: false };
@@ -69,10 +75,9 @@ export function getTransactionStatus(resultsDir: string, transactionId: string):
 
 /** All per-transaction results plus a tally, read from `shared/results/`. */
 export function listPipelineResults(resultsDir: string): PipelineResultsSummary {
-  const dirs = resolveSharedDirs(join(resultsDir, '..'));
   const counts = emptyCounts();
   const results: PipelineResultsSummary['results'] = [];
-  for (const name of listResultFiles(dirs)) {
+  for (const name of listResultFilesIn(resultsDir)) {
     const r = readJson<TransactionResult>(join(resultsDir, name));
     counts[r.decision] += 1;
     results.push({

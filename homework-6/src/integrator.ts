@@ -23,6 +23,7 @@ import {
   ensureDirs,
   readJson,
   resolveSharedDirs,
+  sanitizeSegment,
   writeJson,
   type SharedDirs,
 } from './lib/shared-dirs.js';
@@ -123,11 +124,13 @@ export function runPipeline(
 
   for (const tx of transactions) {
     const id = tx.transaction_id;
+    // Defense in depth: never let an id traverse the filesystem, even before validation.
+    const fileId = sanitizeSegment(id);
     const inputEnvelope = buildEnvelope(asData(tx), 'integrator', 'transaction_validator', clock);
-    writeJson(join(dirs.input, `${id}.json`), inputEnvelope);
+    writeJson(join(dirs.input, `${fileId}.json`), inputEnvelope);
 
     // --- Hop 1: validate ---
-    writeJson(join(dirs.processing, `${id}.json`), inputEnvelope);
+    writeJson(join(dirs.processing, `${fileId}.json`), inputEnvelope);
     const validation = validateTransaction(tx);
     audit.log({
       hop: 'validate',
@@ -146,7 +149,7 @@ export function runPipeline(
         }),
         clock.now().toISOString(),
       );
-      writeJson(join(dirs.results, `${id}.result.json`), result);
+      writeJson(join(dirs.results, `${fileId}.result.json`), result);
       counts.REJECTED_VALIDATION += 1;
       summaryRows.push({ transaction_id: id, decision: 'REJECTED_VALIDATION', risk_score: null, escalate: false });
       continue;
@@ -155,10 +158,10 @@ export function runPipeline(
     const validatedEnvelope = forward(inputEnvelope, 'transaction_validator', 'fraud_detector', {
       status: 'validated',
     });
-    writeJson(join(dirs.output, `${id}.validated.json`), validatedEnvelope);
+    writeJson(join(dirs.output, `${fileId}.validated.json`), validatedEnvelope);
 
     // --- Hop 2: score ---
-    writeJson(join(dirs.processing, `${id}.json`), validatedEnvelope);
+    writeJson(join(dirs.processing, `${fileId}.json`), validatedEnvelope);
     const risk: RiskResult = scoreTransaction(tx, rates);
     audit.log({
       hop: 'score',
@@ -173,10 +176,10 @@ export function runPipeline(
       matched_signals: risk.matched_signals,
       status: 'scored',
     });
-    writeJson(join(dirs.output, `${id}.scored.json`), scoredEnvelope);
+    writeJson(join(dirs.output, `${fileId}.scored.json`), scoredEnvelope);
 
     // --- Hop 3: decide ---
-    writeJson(join(dirs.processing, `${id}.json`), scoredEnvelope);
+    writeJson(join(dirs.processing, `${fileId}.json`), scoredEnvelope);
     const compliance = decide(tx, risk, denylist);
     audit.log({
       hop: 'decide',
@@ -204,7 +207,7 @@ export function runPipeline(
       processed_at: clock.now().toISOString(),
       envelope: finalEnvelope,
     };
-    writeJson(join(dirs.results, `${id}.result.json`), result);
+    writeJson(join(dirs.results, `${fileId}.result.json`), result);
     counts[compliance.decision] += 1;
     summaryRows.push({
       transaction_id: id,

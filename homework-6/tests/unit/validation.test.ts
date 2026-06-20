@@ -45,6 +45,19 @@ describe('validateTransaction', () => {
     expect(validateTransaction({ ...base, amount }).reject_reason).toBe('NON_POSITIVE_AMOUNT');
   });
 
+  it.each(['../../etc/passwd', 'TXN/001', 'TXN 001', 'TXN.001'])(
+    'rejects a path-unsafe transaction_id %s with INVALID_TRANSACTION_ID',
+    (transaction_id) => {
+      expect(validateTransaction({ ...base, transaction_id }).reject_reason).toBe(
+        'INVALID_TRANSACTION_ID',
+      );
+    },
+  );
+
+  it('accepts a normal transaction_id with letters, digits, _ and -', () => {
+    expect(validateTransaction({ ...base, transaction_id: 'TXN_001-A' }).valid).toBe(true);
+  });
+
   it('rejects a currency outside the allow-list', () => {
     expect(validateTransaction({ ...base, currency: 'XYZ' }).reject_reason).toBe(
       'INVALID_CURRENCY:XYZ',
