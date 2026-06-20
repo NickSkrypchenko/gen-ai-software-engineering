@@ -40,8 +40,12 @@ calls exist in the pipeline; these queries informed implementation decisions onl
 - **Applied in (Phase 4):** `mcp/server.ts` — `get_transaction_status` and
   `list_pipeline_results` as tools, `pipeline://summary` as a static resource, all reading the
   real `shared/results/` snapshot; launched via `npx tsx mcp/server.ts` (bare `node` cannot run
-  `.ts`). Note: fastmcp tool parameters need a Standard-Schema validator (zod) — to be confirmed
-  before install in Phase 4.
+  `.ts`). Verified end-to-end with an MCP stdio client: all three artifacts respond.
+- **Version note:** fastmcp tool parameters need a Standard-Schema validator — `zod` (already in
+  fastmcp's dependency tree) is now declared explicitly in `package.json`. The `1.x` line crashes
+  on `start()` against the current MCP SDK (`completion/complete` handler registered without the
+  `completions` capability), so fastmcp was bumped to `4.x` (agents.md pins it as "latest"); the
+  `addTool` / `addResource` / `start({ transportType: 'stdio' })` API used here is unchanged.
 
 ---
 
