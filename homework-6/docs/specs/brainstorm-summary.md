@@ -123,9 +123,12 @@ Per-stage `data` fields:
 | Rule | Reject reason |
 |---|---|
 | Missing required field (`transaction_id`, `amount`, `currency`, `source_account`, `destination_account`, `timestamp`) | `MISSING_FIELD:<name>` |
+| `transaction_id` not matching `^[A-Za-z0-9_-]+$` | `INVALID_TRANSACTION_ID` |
 | Amount not a positive decimal (`> 0`) | `NON_POSITIVE_AMOUNT` |
 | Currency not in the ISO 4217 allow-list | `INVALID_CURRENCY:<code>` |
 | Malformed ISO 8601 timestamp | `INVALID_TIMESTAMP` |
+
+> `INVALID_TRANSACTION_ID` is a **security-hardening addition from the pre-PR review** (SEC-1): the id becomes part of result/audit filenames, so restricting it to a safe token also blocks path traversal. See `docs/reviews/phase-0-5-review.md`. The `specification.md` table is authoritative.
 
 ### 3.2 Fraud Detector — additive risk score (capped at 1.0)
 

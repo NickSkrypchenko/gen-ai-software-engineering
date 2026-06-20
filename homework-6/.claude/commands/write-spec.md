@@ -67,6 +67,10 @@ Emit a single Markdown file with exactly these sections, in order:
   CAD, AUD` — equal **1:1** to the `config/fx-rates.json` keys (parity unit test). FX→USD
   normalization happens **before** amount thresholds; cores receive the rate table as an
   argument (pure).
+- **Validator reject reasons (terminal):** `MISSING_FIELD:<name>` · `INVALID_TRANSACTION_ID`
+  (`transaction_id` must match `^[A-Za-z0-9_-]+$` — it becomes part of result/audit filenames,
+  so this also blocks path traversal) · `NON_POSITIVE_AMOUNT` · `INVALID_CURRENCY:<code>` ·
+  `INVALID_TIMESTAMP`. First failing rule wins.
 - **Risk model (additive, cap 1.0):** high-value >$10k +0.40 · NEAR_THRESHOLD
   $9000–9999.99 +0.20 · off-hours UTC[0–5] +0.20 · cross-border (currency≠USD or
   country≠US) +0.20 · wire +0.10. Bands: <0.30 low · 0.30–0.59 medium · ≥0.60 high.
