@@ -14,3 +14,8 @@ shared/results/*
 
 # OS / editor
 .DS_Store
+
+# .claude/ is ignored repo-wide (root .gitignore), but for homework-6 the
+# commands/hooks/settings under it are required, graded deliverables.
+!.claude/
+!.claude/**
