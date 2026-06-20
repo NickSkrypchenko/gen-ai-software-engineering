@@ -42,6 +42,7 @@ export function runFraudCli(
   return risk;
 }
 
+/* v8 ignore next 3 -- CLI bootstrap guard, exercised only as a script */
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runFraudCli(process.argv.slice(2), process.cwd());
 }
