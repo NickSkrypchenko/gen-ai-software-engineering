@@ -135,6 +135,16 @@ See **[HOWTORUN.md](./HOWTORUN.md)** for full setup, the `/run-pipeline` and
 
 ---
 
+## Demo screenshots
+
+| | |
+|---|---|
+| Pipeline run (`npm run pipeline`) | ![pipeline run](docs/screenshots/pipeline-run.png) |
+| Coverage ≥ 90% (`npm run test:cov`) | ![coverage](docs/screenshots/test-coverage.png) |
+| `/run-pipeline` skill | ![run-pipeline skill](docs/screenshots/skill-run-pipeline.png) |
+| Coverage-gate hook blocking `git push` | ![hook trigger](docs/screenshots/hook-trigger.png) |
+| MCP: context7 + `pipeline-status` tool | ![mcp 1](docs/screenshots/mcp-interaction1.png) ![mcp 2](docs/screenshots/mcp-interaction2.png) |
+
 ## Project layout
 
 ```
