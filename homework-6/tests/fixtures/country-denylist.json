@@ -1,0 +1,14 @@
+{
+  "transaction_id": "FIX-COUNTRY",
+  "timestamp": "2026-03-16T12:00:00Z",
+  "source_account": "ACC-4400",
+  "destination_account": "ACC-5500",
+  "amount": "750.00",
+  "currency": "USD",
+  "transaction_type": "transfer",
+  "description": "Synthetic: metadata.country on the denylist (IR) to exercise the country-branch REJECT",
+  "metadata": {
+    "channel": "online",
+    "country": "IR"
+  }
+}
